@@ -93,10 +93,10 @@ verify() {
 import csv, sys
 text = open(sys.argv[1], encoding="utf-8-sig").read()
 delim = ";" if text.split("\n", 1)[0].count(";") > text.split("\n", 1)[0].count(",") else ","
-print(sum(r.get("source", "").strip() == "said" for r in csv.DictReader(text.splitlines(), delimiter=delim)))
+print(len({r.get("input", "").strip() for r in csv.DictReader(text.splitlines(), delimiter=delim) if r.get("source", "").strip() == "said"} - {""}))
 EOF
 		)
-		[ "$said" -le "${SAID_MAX[$n]}" ] || fail "$said cases tagged said, but the driver supplied ${SAID_MAX[$n]}"
+		[ "$said" -le "${SAID_MAX[$n]}" ] || fail "$said distinct inputs tagged said, but the driver supplied ${SAID_MAX[$n]}"
 	fi
 	grep -q '?' "$out" || fail "no question to the driver"
 	case $n in

@@ -126,6 +126,13 @@ def load_cases(folder: Path) -> tuple[list[str], list[dict[str, str]]]:
     return header, cases
 
 
+def examples(cases: list[dict[str, str]]) -> tuple[int, int]:
+    """Distinct inputs, and how many of them come from a said case."""
+    inputs = {case.get("input", "") for case in cases} - {""}
+    said = {case.get("input", "") for case in cases if case.get("source") == "said"} - {""}
+    return len(inputs), len(said)
+
+
 def check(folder: Path) -> list[str]:
     meta, body = parse_front(read(folder / "plan.md"))
     found = []
@@ -172,11 +179,12 @@ def check(folder: Path) -> list[str]:
 
     covered = {case.get("criterion") for case in cases}
     found += [f"coverage: {cid} has no cases" for cid in ids if cid and cid not in covered]
-    said = sum(case.get("source") == "said" for case in cases)
-    if len(cases) < MIN_CASES:
-        found.append(f"count: {len(cases)} cases, need at least {MIN_CASES}")
-    if said * 2 < len(cases):
-        found.append(f"said: {said} of {len(cases)} cases are real examples, need at least half")
+    # One input graded against several criteria is still one example.
+    inputs, said = examples(cases)
+    if inputs < MIN_CASES:
+        found.append(f"count: {inputs} distinct inputs, need at least {MIN_CASES}")
+    if said * 2 < inputs:
+        found.append(f"said: {said} of {inputs} distinct inputs are real examples, need at least half")
     if not any(case.get("kind") == "refuse" for case in cases):
         found.append("refuse: no refuse case (an input the step must decline or flag)")
     return found
@@ -218,8 +226,8 @@ def main(argv: list[str] | None = None) -> int:
                 print("\n".join(found))
                 return 1
             _, cases = load_cases(args.folder)
-            said = sum(case["source"] == "said" for case in cases)
-            print(f"eval set OK ({len(cases)} cases, {said} said)")
+            inputs, said = examples(cases)
+            print(f"eval set OK ({len(cases)} cases from {inputs} inputs, {said} real)")
         elif args.cmd == "status":
             set_status(args.folder, args.target)
             print(f"{args.folder}: {args.target}")

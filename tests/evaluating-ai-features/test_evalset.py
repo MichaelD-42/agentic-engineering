@@ -154,7 +154,7 @@ class CheckTest(RepoCase):
         self.assertEqual(evalset.check(self.folder), [])
         code, out, _ = self.run_cli("check", str(self.folder))
         self.assertEqual(code, 0)
-        self.assertEqual(out.strip(), "eval set OK (20 cases, 10 said)")
+        self.assertEqual(out.strip(), "eval set OK (20 cases from 20 inputs, 10 real)")
 
     def test_rule1_bad_frontmatter(self):
         plan = self.folder / "plan.md"
@@ -196,11 +196,28 @@ class CheckTest(RepoCase):
 
     def test_rule4_too_few_cases(self):
         write_valid(self.folder, cases=19, said=10)
-        self.assertIn("count: 19 cases, need at least 20", self.problems())
+        self.assertIn("count: 19 distinct inputs, need at least 20", self.problems())
 
     def test_rule5_too_few_said(self):
         write_valid(self.folder, cases=20, said=9)
-        self.assertIn("said: 9 of 20", self.problems())
+        self.assertIn("said: 9 of 20 distinct inputs", self.problems())
+
+    def test_rows_per_criterion_count_as_one_input(self):
+        # 7 real inputs x 3 criteria = 21 rows: still only 7 examples.
+        def edit(h, d):
+            for n, row in enumerate(d):
+                row[4] = f"input {n % 7}"
+        rewrite_cases(self.folder, edit)
+        found = self.problems()
+        self.assertIn("count: 7 distinct inputs, need at least 20", found)
+
+    def test_said_counts_distinct_inputs(self):
+        # 10 said rows, but all the same email.
+        def edit(h, d):
+            for row in d[:10]:
+                row[4] = "same email"
+        rewrite_cases(self.folder, edit)
+        self.assertIn("said: 1 of 11 distinct inputs", self.problems())
 
     def test_rule6_no_refuse(self):
         write_valid(self.folder, refuse=0)
