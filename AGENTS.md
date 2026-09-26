@@ -9,6 +9,14 @@ This repo is a Claude Code plugin. The repo root is the plugin; `.claude-plugin/
 - `docs/adr/`: decisions, managed with the `recording-decisions` skill (`adr.py`). Never edit an accepted ADR's body; supersede it.
 - `docs/superpowers/specs/`, `docs/superpowers/plans/`: design specs and implementation plans.
 
+## Superpowers dependency
+
+This plugin requires [Superpowers](https://github.com/obra/superpowers) and is designed to work with it. Skills here extend the Superpowers workflow rather than replace it:
+
+- Reference Superpowers skills by their namespaced name (`superpowers:brainstorming`, `superpowers:test-driven-development`, …) and hand off to them instead of duplicating their content.
+- Don't add a skill that overlaps a Superpowers skill; extend or complement it.
+- Follow Superpowers' conventions for skill structure and voice, so both plugins read as one workflow.
+
 ## Writing a skill
 
 Every `SKILL.md` starts with frontmatter:

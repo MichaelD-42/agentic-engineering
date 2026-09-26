@@ -4,6 +4,14 @@ A Claude Code plugin of skills for agentic engineering: getting coding agents to
 
 Skills are instruction sets that Claude Code loads when their trigger matches the task in front of it. This plugin bundles them so one install gives you the whole workflow.
 
+## Requirements
+
+This plugin depends on [Superpowers](https://github.com/obra/superpowers). Its skills are designed to run alongside the Superpowers workflow (brainstorming, planning, TDD, debugging, verification) and hand off to Superpowers skills by name, so without it they are incomplete. Install Superpowers first:
+
+```text
+/plugin install superpowers@claude-plugins-official
+```
+
 ## Installation
 
 ```text
