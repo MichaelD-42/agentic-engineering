@@ -1,104 +1,46 @@
-# AGENTS.md
+# agentic-engineering — contributor guide
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This repo is a Claude Code plugin. The repo root is the plugin; `.claude-plugin/marketplace.json` lists it as the only entry (ADR-0001). Read this before changing anything.
 
-## Project Overview
+## Layout
 
-<!-- Describe your project here -->
+- `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`: manifests. Versions must match; never edit them by hand, use `scripts/bump-version.sh`.
+- `skills/<skill-name>/SKILL.md`: one directory per skill, supporting files alongside `SKILL.md`.
+- `docs/adr/`: decisions, managed with the `recording-decisions` skill (`adr.py`). Never edit an accepted ADR's body; supersede it.
+- `docs/superpowers/specs/`, `docs/superpowers/plans/`: design specs and implementation plans.
 
-## Development Commands
+## Superpowers dependency
 
-<!-- Add your project's commands here -->
+This plugin requires [Superpowers](https://github.com/obra/superpowers) and is designed to work with it. Skills here extend the Superpowers workflow rather than replace it:
 
-## Architecture
+- Reference Superpowers skills by their namespaced name (`superpowers:brainstorming`, `superpowers:test-driven-development`, …) and hand off to them instead of duplicating their content.
+- Don't add a skill that overlaps a Superpowers skill; extend or complement it.
+- Follow Superpowers' conventions for skill structure and voice, so both plugins read as one workflow.
 
-<!-- Describe your project's architecture here -->
+## Writing a skill
 
-## Development Standards
+Every `SKILL.md` starts with frontmatter:
 
-### Architecture Principles
+```yaml
+---
+name: skill-name            # kebab-case, matches the directory name
+description: Use when ...   # the trigger: when to load it, not what it does
+---
+```
 
-- Prefer composition over inheritance
-- Use dependency injection for testability
-- Implement proper error boundaries
-- Follow SOLID principles
+Skills are code that shapes agent behaviour. Develop and test them with `superpowers:writing-skills`: watch an agent fail the scenario without the skill, add the skill, watch it pass, then pressure-test it. A skill without that evidence doesn't merge.
 
-### Code Quality Requirements
+Third-party skills keep their original license and author credit in the skill directory and in the README table.
 
-- Write comprehensive error handling
-- Include unit tests for new functionality (min 80% coverage)
-- Use typesafety where applicable
+## Workflow
 
-### Security Practices
+- Short-lived branches: `feat/`, `fix/`, `docs/`, `chore/`.
+- Conventional commits: `feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, `test:`.
+- One logical change per commit and per PR; fill in the PR template.
 
-- Never log sensitive data (passwords, API keys, PII)
-- Validate and sanitize all user inputs
-- Use environment variables for secrets
-- Implement proper authentication/authorization checks
-- Review OWASP Top 10 vulnerabilities
+## Releasing
 
-## Development Workflow
-
-**MANDATORY**: All development follows a rigorous Test-Driven Development (TDD) approach with two nested cycles.
-
-**Mantra**: "Design -> Test -> Code -> Verify -> Reflect"
-
-### Microcycle: Design - Test - Code - Verify
-
-The microcycle applies to **every feature, function, or system** being built. Duration: Minutes to hours.
-
-| Step           | Goal                     | Activities                                                                                        |
-| -------------- | ------------------------ | ------------------------------------------------------------------------------------------------- |
-| **1. Design**  | Understand what to build | Define requirements, identify inputs/outputs, determine edge cases, sketch interfaces             |
-| **2. Test**    | Define expected behavior | Write failing unit tests (Red phase), write integration tests if needed, test edge cases          |
-| **3. Code**    | Make tests pass          | Write minimal code to pass tests (Green phase), follow SOLID principles, refactor for clarity     |
-| **4. Verify**  | Confirm correctness      | Run all tests, run linter, run type checker, check coverage, manual verification if needed        |
-
-**TDD Red-Green-Refactor**:
-
-1. **Red**: Tests fail (Step 2)
-2. **Green**: Write minimal code to pass tests (Step 3)
-3. **Refactor**: Improve code quality while keeping tests green
-
-**After each microcycle**: Commit the completed work.
-
-### Macrocycle: Requirements - Implement - Acceptance - Retrospective
-
-The macrocycle applies to **larger features or phases**. Duration: Hours to days.
-
-| Phase              | Goal                 | Activities                                                                                  |
-| ------------------ | -------------------- | ------------------------------------------------------------------------------------------- |
-| **1. Requirements**| Define scope         | Review requirements, break down into tasks, define acceptance criteria, identify risks      |
-| **2. Implement**   | Build the feature    | Execute microcycles for each task, commit after each task, document as you go               |
-| **3. Acceptance**  | Verify completion    | Run full test suite, verify all acceptance criteria, code review, check performance         |
-| **4. Retrospective**| Reflect and improve | What went well? What to improve? Capture learnings, define action items                     |
-
-**After each macrocycle**: Run the `retrospective` skill.
-
-### Testing Strategy
-
-**Test Pyramid**:
-
-- **70% Unit Tests**: Fast, isolated, focused on logic
-- **20% Integration Tests**: Component interactions
-- **10% E2E Tests**: Full user flows
-
-**Coverage Targets**:
-
-- Core business logic: 90%+
-- UI/rendering: 60%+
-- Overall: 75%+
-
-### Git Workflow
-
-**Commit in meaningful small steps**:
-
-- Each commit represents a single logical change
-- Commit after completing each microcycle
-- Use Conventional Commits format (see `git-conventional-commits` skill)
-
-**Use short-lived feature branches**:
-
-- Branch naming: `feat/`, `fix/`, `refactor/`, `test/`, `docs/`
-- Merge back to main within hours/days
-- Delete branches after merging
+1. `scripts/bump-version.sh X.Y.Z`: bumps both manifests and audits for stray version strings.
+2. Add an `X.Y.Z` entry at the top of `RELEASE-NOTES.md`.
+3. `claude plugin validate --strict .claude-plugin/marketplace.json && claude plugin validate --strict .claude-plugin/plugin.json`: both must exit 0 (validating `.` checks only the marketplace).
+4. Commit as `chore: release X.Y.Z`, merge to `main`, then `claude plugin tag`.

@@ -1,83 +1,58 @@
-# 🤖 Agentic Skills
+# agentic-engineering
 
-> A curated collection of tested skills for AI coding assistants, designed to promote disciplined software development practices.
+A Claude Code plugin of skills for agentic engineering: getting coding agents to work the way a disciplined engineer does. Design before code, a failing test before the fix, evidence before any claim of "done".
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+Skills are instruction sets that Claude Code loads when their trigger matches the task in front of it. This plugin bundles them so one install gives you the whole workflow.
 
-## Overview
+## Requirements
 
-This repository contains a collection of **agentic skills** — structured instruction sets that guide AI coding assistants to follow disciplined software development practices. These skills are designed for tools like Claude Code and similar AI-powered development environments.
+This plugin depends on [Superpowers](https://github.com/obra/superpowers). Its skills are designed to run alongside the Superpowers workflow (brainstorming, planning, TDD, debugging, verification) and hand off to Superpowers skills by name, so without it they are incomplete. Install Superpowers first:
 
-Each skill provides:
-- **Clear trigger conditions** — When to activate the skill
-- **Detailed instructions** — Step-by-step guidance for the AI agent
-- **Quality gates** — Verification checkpoints to ensure proper execution
-- **Anti-patterns** — Common mistakes to avoid
-
-## 📚 Available Skills
-
-| Skill | Description |
-|-------|-------------|
-| **[claudeception](skills/claudeception/SKILL.md)** | Continuous learning system that extracts reusable knowledge from work sessions and codifies it into new skills. *By [Ahmad Adi](https://github.com/OthmanAdi/Claudeception).* |
-| **[code-review](skills/code-review/SKILL.md)** | Systematic code review focusing on quality, maintainability, test coverage, and adherence to project standards |
-| **[dispatching-parallel-agents](skills/dispatching-parallel-agents/SKILL.md)** | Dispatch multiple agents to work on independent tasks in parallel. *By [Jesse Vincent](https://github.com/obra/superpowers).* |
-| **[git-conventional-commits](skills/git-conventional-commits/SKILL.md)** | Enforce [Conventional Commits](https://www.conventionalcommits.org/) format for semantic versioning and clean git history |
-| **[planning-with-files](skills/planning-with-files/SKILL.md)** | File-based planning with persistent task plans, findings, and progress tracking. *By [Ahmad Adi](https://github.com/OthmanAdi/planning-with-files).* |
-| **[retrospective](skills/retrospective/SKILL.md)** | Structured retrospectives after development phases to capture learnings and drive continuous improvement |
-| **[systematic-debugging](skills/systematic-debugging/SKILL.md)** | Root cause investigation before attempting fixes — no guessing, no random patches. *By [Jesse Vincent](https://github.com/obra/superpowers).* |
-| **[test-driven-development](skills/test-driven-development/SKILL.md)** | Enforces strict TDD: write failing test first, minimal implementation, then refactor. *By [Jesse Vincent](https://github.com/obra/superpowers).* |
-| **[verification-before-completion](skills/verification-before-completion/SKILL.md)** | Requires evidence before claiming success — no "should pass," only verified results. *By [Jesse Vincent](https://github.com/obra/superpowers).* |
-
-
-## 🚀 Quick Start
-
-### Installation
-
-Copy individual skills or the entire `skills/` directory to your AI assistant's skills location:
-
-```bash
-# For Claude Code (user-wide)
-cp -r skills/* ~/.claude/skills/
-
-# For project-specific skills
-cp -r skills/* .claude/skills/
+```text
+/plugin install superpowers@claude-plugins-official
 ```
 
-### Using the AGENTS.md Template
+## Installation
 
-The included `AGENTS.md` provides a template for configuring AI coding assistants with:
-- Development standards and architecture principles
-- Test-Driven Development workflow
-- Git workflow with conventional commits
-- Code quality requirements
-
-Copy it to your project root and customize for your specific project:
-
-```bash
-cp AGENTS.md /path/to/your/project/
+```text
+/plugin marketplace add MichaelD-42/agentic-engineering
+/plugin install agentic-engineering@agentic-engineering
 ```
 
-## 🎯 Philosophy
+To update: `/plugin marketplace update agentic-engineering`.
 
-These skills embody several core principles:
+## Skills
 
-### 1. **Evidence Over Assumptions**
-Never claim something works without verification. Run the tests. Check the output. Then report.
+None yet. This release bootstraps the plugin and marketplace; skills are added in upcoming releases and will be listed here.
 
-### 2. **Root Cause Over Symptoms**
-No random fixes. Investigate first, understand the problem, then implement a targeted solution.
+| Skill | Use when |
+|-------|----------|
+| — | — |
 
-### 3. **Test First, Always**
-Write the failing test before the implementation. If you didn't see it fail, you don't know it tests the right thing.
+## Principles
 
-### 4. **Continuous Learning**
-Extract and codify knowledge from each session. Build a growing library of reusable skills.
+The skills here share a few convictions. Evidence over assumption: run the command and read the output before claiming anything. Root cause over symptom: investigate before patching. Test first: if you didn't watch the test fail, you don't know it tests the right thing. Small, reviewable steps, with decisions that are expensive to reverse written down as ADRs.
 
-### 5. **Parallel When Possible**
-Independent tasks should run in parallel. Don't serialize what can be parallelized.
+## Repository layout
 
-## 📄 License
+```text
+.claude-plugin/        plugin.json and marketplace.json
+skills/<name>/SKILL.md one directory per skill
+scripts/               release tooling
+docs/adr/              architecture decision records
+docs/superpowers/      design specs and implementation plans
+```
 
-This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+The repo root is the plugin, and the marketplace in the same repo lists it ([ADR-0001](docs/adr/0001-ship-the-collection-as-one-root-plugin-superpowers-style.md)).
 
----
+## Contributing
+
+See [AGENTS.md](AGENTS.md) for how skills are structured, tested and released.
+
+## Acknowledgements
+
+Structure and release tooling follow [obra/superpowers](https://github.com/obra/superpowers) by Jesse Vincent.
+
+## License
+
+MIT, see [LICENSE](LICENSE).
