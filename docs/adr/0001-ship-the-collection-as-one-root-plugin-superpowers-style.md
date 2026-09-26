@@ -1,7 +1,8 @@
 ---
-status: proposed
+status: accepted
 date: 2026-09-26
 decision-makers: Michael Dold
+review-by: 2027-09-26
 ---
 
 # Ship the collection as one root plugin, superpowers-style
