@@ -1,7 +1,13 @@
 {
   "files": [
-    { "path": ".claude-plugin/plugin.json", "field": "version" },
-    { "path": ".claude-plugin/marketplace.json", "field": "plugins.0.version" }
+    {
+      "path": ".claude-plugin/plugin.json",
+      "field": "version"
+    },
+    {
+      "path": ".claude-plugin/marketplace.json",
+      "field": "plugins.0.version"
+    }
   ],
   "audit": {
     "exclude": [
@@ -10,7 +16,10 @@
       ".git",
       ".superpowers",
       ".version-bump.json",
-      "bump-version.sh"
+      "bump-version.sh",
+      "pyproject.toml",
+      "uv.lock",
+      ".venv"
     ]
   }
 }

@@ -23,11 +23,9 @@ To update: `/plugin marketplace update agentic-engineering`.
 
 ## Skills
 
-None yet. This release bootstraps the plugin and marketplace; skills are added in upcoming releases and will be listed here.
-
 | Skill | Use when |
 |-------|----------|
-| — | — |
+| `recording-decisions` | Choosing between approaches, libraries, data models or architectural patterns, or recording, superseding or reviewing a decision. Gates which decisions get an ADR, writes MADR 4.0 records with `adr.py`, and blocks edits to decided ADRs. |
 
 ## Principles
 
