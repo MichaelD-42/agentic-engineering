@@ -286,3 +286,7 @@ class RenderTest(RepoCase):
         page = canvas.render(canvas.new(self.root, "X", TODAY)).read_text()
         self.assertIn("html(token)", page)
         self.assertIn('token.text.startsWith("<!--")', page)
+
+
+def test_ci_red():
+    assert False
