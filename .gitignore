@@ -2,3 +2,5 @@
 __pycache__/
 .idea/
 .vscode/
+.worktrees/
+.claude/settings.local.json
