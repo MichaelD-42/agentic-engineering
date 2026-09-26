@@ -105,3 +105,150 @@ class NewTest(RepoCase):
         code, out, _ = self.run_cli("new", "Cli made")
         self.assertEqual(code, 0)
         self.assertEqual(out.strip(), str(self.root / "docs/evals/cli-made"))
+
+
+def write_valid(folder, cases=20, said=10, refuse=1):
+    """A passing eval set: criteria c1, c2; cases alternate between them."""
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / "plan.md").write_text(
+        "---\nname: Valid\nstatus: draft\ncanvas: \nk: 3\n---\n\n## Criteria\n\n"
+        "| id | criterion | grader | threshold |\n|---|---|---|---|\n"
+        "| c1 | Right category | code | ≥ 95% pass all k |\n"
+        "| c2 | Polite reply | model | ≥ 90% pass all k |\n\n## Grading notes\n\nx\n"
+    )
+    with (folder / "cases.csv").open("w", newline="") as fh:
+        w = csv.writer(fh)
+        w.writerow(evalset.HEADER)
+        for n in range(cases):
+            w.writerow([
+                f"t{n}",
+                "c1" if n % 2 == 0 else "c2",
+                "said" if n < said else "assumed",
+                "refuse" if n < refuse else "normal",
+                f"input {n}",
+                f"expected {n}",
+                "code" if n % 2 == 0 else "model",
+            ])
+    return folder
+
+
+def rewrite_cases(folder, edit):
+    """Apply edit(rows) to the data rows of cases.csv."""
+    with (folder / "cases.csv").open(newline="") as fh:
+        rows = list(csv.reader(fh))
+    header, data = rows[0], rows[1:]
+    edit(header, data)
+    with (folder / "cases.csv").open("w", newline="") as fh:
+        csv.writer(fh).writerows([header, *data])
+
+
+class CheckTest(RepoCase):
+    def setUp(self):
+        super().setUp()
+        self.folder = write_valid(self.root / "docs/evals/valid")
+
+    def problems(self):
+        return "\n".join(evalset.check(self.folder))
+
+    def test_valid_set_passes(self):
+        self.assertEqual(evalset.check(self.folder), [])
+        code, out, _ = self.run_cli("check", str(self.folder))
+        self.assertEqual(code, 0)
+        self.assertEqual(out.strip(), "eval set OK (20 cases, 10 said)")
+
+    def test_rule1_bad_frontmatter(self):
+        plan = self.folder / "plan.md"
+        plan.write_text(plan.read_text().replace("status: draft", "status: done").replace("k: 3", "k: 0"))
+        found = self.problems()
+        self.assertIn("status", found)
+        self.assertIn("k must be", found)
+
+    def test_rule1_criterion_without_grader_or_threshold(self):
+        plan = self.folder / "plan.md"
+        plan.write_text(plan.read_text().replace("| code | ≥ 95% pass all k |", "|  |  |"))
+        found = self.problems()
+        self.assertIn("c1: grader", found)
+        self.assertIn("c1: threshold", found)
+
+    def test_rule2_wrong_header(self):
+        rewrite_cases(self.folder, lambda h, d: h.__setitem__(0, "case"))
+        self.assertIn("header", self.problems())
+
+    def test_rule2_bad_values(self):
+        def edit(h, d):
+            d[0][1] = "c9"
+            d[1][2] = "guessed"
+            d[2][3] = "weird"
+            d[3][6] = "human"
+            d[4][5] = ""
+            d[5][0] = d[6][0]
+        rewrite_cases(self.folder, edit)
+        found = self.problems()
+        for fragment in ("unknown criterion c9", "source", "kind", "grader", "expected is empty", "duplicate id"):
+            self.assertIn(fragment, found)
+
+    def test_rule3_uncovered_criterion(self):
+        def edit(h, d):
+            for row in d:
+                row[1] = "c1"
+        rewrite_cases(self.folder, edit)
+        self.assertIn("coverage: c2 has no cases", self.problems())
+
+    def test_rule4_too_few_cases(self):
+        write_valid(self.folder, cases=19, said=10)
+        self.assertIn("count: 19 cases, need at least 20", self.problems())
+
+    def test_rule5_too_few_said(self):
+        write_valid(self.folder, cases=20, said=9)
+        self.assertIn("said: 9 of 20", self.problems())
+
+    def test_rule6_no_refuse(self):
+        write_valid(self.folder, refuse=0)
+        self.assertIn("refuse: no refuse case", self.problems())
+
+    def test_excel_semicolon_bom_passes(self):
+        with (self.folder / "cases.csv").open(newline="") as fh:
+            rows = list(csv.reader(fh))
+        buf = io.StringIO()
+        csv.writer(buf, delimiter=";").writerows(rows)
+        (self.folder / "cases.csv").write_bytes(("﻿" + buf.getvalue()).encode("utf-8"))
+        self.assertEqual(evalset.check(self.folder), [])
+
+    def test_multiline_input_is_one_case(self):
+        rewrite_cases(self.folder, lambda h, d: d[0].__setitem__(4, "Hello,\nwhen is PO 4711 due?\nThanks"))
+        self.assertEqual(evalset.check(self.folder), [])
+
+    def test_blank_rows_ignored(self):
+        with (self.folder / "cases.csv").open("a", newline="") as fh:
+            fh.write(",,,,,,\r\n\r\n")
+        self.assertEqual(evalset.check(self.folder), [])
+
+    def test_cli_check_failure_exit_1(self):
+        write_valid(self.folder, refuse=0)
+        code, out, _ = self.run_cli("check", str(self.folder))
+        self.assertEqual(code, 1)
+        self.assertIn("refuse", out)
+
+
+class StatusTest(RepoCase):
+    def test_ready_blocked_by_failing_check(self):
+        folder = write_valid(self.root / "e", refuse=0)
+        code, _, err = self.run_cli("status", str(folder), "ready")
+        self.assertEqual(code, 1)
+        self.assertIn("refuse", err)
+        meta, _ = evalset.parse_front((folder / "plan.md").read_text())
+        self.assertEqual(meta["status"], "draft")
+
+    def test_ready_allowed_and_only_status_changes(self):
+        folder = write_valid(self.root / "e")
+        before = (folder / "plan.md").read_text()
+        code, _, _ = self.run_cli("status", str(folder), "ready")
+        self.assertEqual(code, 0)
+        after = (folder / "plan.md").read_text()
+        self.assertEqual(after, before.replace("status: draft", "status: ready", 1))
+
+    def test_draft_always_allowed(self):
+        folder = write_valid(self.root / "e", refuse=0)
+        evalset.set_status(folder, "draft")
+        meta, _ = evalset.parse_front((folder / "plan.md").read_text())
+        self.assertEqual(meta["status"], "draft")

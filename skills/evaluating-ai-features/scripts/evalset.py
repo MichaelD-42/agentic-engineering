@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import re
 import sys
 import unicodedata
@@ -108,6 +109,93 @@ def new(root: Path, title: str, canvas: Path | None = None) -> Path:
     return folder
 
 
+def load_cases(folder: Path) -> tuple[list[str], list[dict[str, str]]]:
+    """Header and non-blank rows of cases.csv; accepts Excel's ';' and BOM."""
+    text = read(folder / "cases.csv")
+    first = text.split("\n", 1)[0]
+    delimiter = ";" if first.count(";") > first.count(",") else ","
+    rows = list(csv.reader(text.splitlines(keepends=True), delimiter=delimiter))
+    if not rows:
+        return [], []
+    header = [cell.strip() for cell in rows[0]]
+    cases = [
+        dict(zip(header, (cell.strip() for cell in row)), _width=str(len(row)))
+        for row in rows[1:]
+        if any(cell.strip() for cell in row)
+    ]
+    return header, cases
+
+
+def check(folder: Path) -> list[str]:
+    meta, body = parse_front(read(folder / "plan.md"))
+    found = []
+    if not meta.get("name"):
+        found.append("plan.md: name is empty")
+    if meta.get("status") not in STATUSES:
+        found.append(f"plan.md: status '{meta.get('status', '')}' not one of draft, ready")
+    if not re.fullmatch(r"[1-9]\d*", meta.get("k", "")):
+        found.append("plan.md: k must be an integer ≥ 1")
+    criteria = table_rows(sections(body).get("Criteria", ""))
+    if not criteria:
+        found.append("plan.md: no criteria")
+    ids = []
+    for row in criteria:
+        cid, text, grader, threshold = (row + ["", "", "", ""])[:4]
+        ids.append(cid)
+        if not cid or not text:
+            found.append(f"plan.md: criterion '{cid}' needs an id and a text")
+        if grader not in GRADERS:
+            found.append(f"plan.md: {cid}: grader must be code or model")
+        if not threshold:
+            found.append(f"plan.md: {cid}: threshold is empty")
+
+    header, cases = load_cases(folder)
+    if header != HEADER:
+        return found + [f"cases.csv: header must be {','.join(HEADER)}"]
+    seen = set()
+    for case in cases:
+        cid = case["id"] or "?"
+        if case.pop("_width") != str(len(HEADER)):
+            found.append(f"cases.csv: case {cid}: needs {len(HEADER)} columns")
+            continue
+        if cid in seen:
+            found.append(f"cases.csv: duplicate id {cid}")
+        seen.add(cid)
+        if case["criterion"] not in ids:
+            found.append(f"cases.csv: case {cid}: unknown criterion {case['criterion']}")
+        for field, allowed in (("source", SOURCES), ("kind", KINDS), ("grader", GRADERS)):
+            if case[field] not in allowed:
+                found.append(f"cases.csv: case {cid}: {field} must be {' or '.join(allowed)}")
+        for field in ("input", "expected"):
+            if not case[field]:
+                found.append(f"cases.csv: case {cid}: {field} is empty")
+
+    covered = {case.get("criterion") for case in cases}
+    found += [f"coverage: {cid} has no cases" for cid in ids if cid and cid not in covered]
+    said = sum(case.get("source") == "said" for case in cases)
+    if len(cases) < MIN_CASES:
+        found.append(f"count: {len(cases)} cases, need at least {MIN_CASES}")
+    if said * 2 < len(cases):
+        found.append(f"said: {said} of {len(cases)} cases are real examples, need at least half")
+    if not any(case.get("kind") == "refuse" for case in cases):
+        found.append("refuse: no refuse case (an input the step must decline or flag)")
+    return found
+
+
+def set_status(folder: Path, target: str) -> None:
+    if target == "ready":
+        found = check(folder)
+        if found:
+            raise EvalError("cannot move to ready:\n" + "\n".join(found))
+    path = folder / "plan.md"
+    text = read(path)
+    front = FRONT.match(text)
+    if not front:
+        raise EvalError("plan.md: missing frontmatter")
+    head = re.sub(r"^status:.*$", f"status: {target}", front.group(0), count=1, flags=re.M)
+    path.write_text(head + text[front.end() :])
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="evalset.py", description=__doc__)
     parser.add_argument("--root", type=Path, default=Path.cwd())
@@ -115,10 +203,26 @@ def main(argv: list[str] | None = None) -> int:
     p_new = sub.add_parser("new", help="scaffold docs/evals/<slug>/plan.md and cases.csv")
     p_new.add_argument("title")
     p_new.add_argument("--canvas", type=Path)
+    p_check = sub.add_parser("check", help="validate an eval set against the gate")
+    p_check.add_argument("folder", type=Path)
+    p_status = sub.add_parser("status", help="move an eval set to ready (if check passes) or draft")
+    p_status.add_argument("folder", type=Path)
+    p_status.add_argument("target", choices=STATUSES)
     args = parser.parse_args(argv)
     try:
         if args.cmd == "new":
             print(new(args.root, args.title, args.canvas))
+        elif args.cmd == "check":
+            found = check(args.folder)
+            if found:
+                print("\n".join(found))
+                return 1
+            _, cases = load_cases(args.folder)
+            said = sum(case["source"] == "said" for case in cases)
+            print(f"eval set OK ({len(cases)} cases, {said} said)")
+        elif args.cmd == "status":
+            set_status(args.folder, args.target)
+            print(f"{args.folder}: {args.target}")
     except EvalError as exc:
         print(f"evalset.py: {exc}", file=sys.stderr)
         return 1
