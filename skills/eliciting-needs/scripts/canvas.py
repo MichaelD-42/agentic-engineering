@@ -32,7 +32,10 @@ SECTIONS = (
 )
 SCORED = SECTIONS[1:9]
 MUST_SCORE_2 = ("Actual need", "Success criteria", "Solution mode")
-STATUSES = ("draft", "roasted", "approved")
+STATUSES = ("draft", "roasted", "approved", "shipped", "reviewed")
+SHIPPED = ("shipped", "reviewed")
+REVIEW_DAYS = 5
+FOLLOW_UP = "Follow-up"
 MODES = ("automate", "augment", "agent", "classic", "process-change", "dont-build")
 NO_BUILD = ("process-change", "dont-build")
 FIELDS = ("title", "date", "status", "owner", "mode")
@@ -60,6 +63,22 @@ def read(path: Path) -> str:
     if not path.is_file():
         raise CanvasError(f"{path}: no such file")
     return path.read_text().replace("\r\n", "\n")
+
+
+def valid_date(value: str) -> bool:
+    try:
+        dt.date.fromisoformat(value)
+    except ValueError:
+        return False
+    return bool(re.fullmatch(r"\d{4}-\d{2}-\d{2}", value))
+
+
+def set_front(head: str, key: str, value: str) -> str:
+    """Set key in a frontmatter block (--- … ---), adding the line if missing."""
+    line = f"{key}: {value}"
+    if re.search(rf"^{re.escape(key)}:", head, re.M):
+        return re.sub(rf"^{re.escape(key)}:.*$", line, head, count=1, flags=re.M)
+    return head[: head.rindex("---")] + line + "\n---\n"
 
 
 def parse(text: str) -> tuple[dict[str, str], dict[str, str]]:
@@ -129,8 +148,13 @@ def problems(meta: dict[str, str], sections: dict[str, str], status: str) -> lis
     ):
         found.append("Success criteria: no number with a unit")
     found += roast_problems(sections["Roast"], mode)
-    if status == "approved" and (PLACEHOLDER.search(sketch) or not sketch.strip()):
+    if status in ("approved", *SHIPPED) and (PLACEHOLDER.search(sketch) or not sketch.strip()):
         found.append("Solution sketch: not filled")
+    if status in SHIPPED:
+        if mode == "dont-build":
+            found.append("mode: dont-build — nothing to ship")
+        if not valid_date(meta.get("review-by", "")):
+            found.append("review-by: missing or not a YYYY-MM-DD date")
     return found
 
 
@@ -139,18 +163,26 @@ def check(path: Path) -> list[str]:
     return problems(meta, sections, meta.get("status", ""))
 
 
-def set_status(path: Path, target: str) -> None:
+def set_status(
+    path: Path, target: str, today: dt.date | None = None, review_in: int = REVIEW_DAYS
+) -> None:
     text = read(path)
     meta, sections = parse(text)
+    current = meta.get("status", "")
+    if target == "shipped" and current not in ("approved", "shipped"):
+        raise CanvasError(f"cannot move to shipped from {current}: approve it first")
+    if target == "reviewed" and current != "shipped":
+        raise CanvasError(f"cannot move to reviewed from {current}: ship it first")
+    front = FRONT.match(text)
+    head = front.group(0)
+    if target == "shipped":
+        due = ((today or dt.date.today()) + dt.timedelta(days=review_in)).isoformat()
+        head = set_front(head, "review-by", due)
+        meta["review-by"] = due
     found = problems(meta, sections, target)
     if found:
         raise CanvasError(f"cannot move to {target}:\n" + "\n".join(found))
-    front = FRONT.match(text)
-    head = re.sub(
-        r"^status:.*$", f"status: {target}", front.group(0), count=1, flags=re.M
-    )
-    path.write_text(head + text[front.end() :])
-
+    path.write_text(set_front(head, "status", target) + text[front.end() :])
 
 def render(path: Path, out: Path | None = None) -> Path:
     text = read(path)
@@ -205,6 +237,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     p_status.add_argument("path", type=Path)
     p_status.add_argument("target", choices=STATUSES)
+    p_status.add_argument("--review-in", type=int, default=REVIEW_DAYS)
     p_render = sub.add_parser(
         "render", help="write a self-contained HTML page for the canvas"
     )
@@ -219,7 +252,7 @@ def main(argv: list[str] | None = None) -> int:
             print("\n".join(found) if found else "ok")
             return 1 if found else 0
         elif args.cmd == "status":
-            set_status(args.path, args.target)
+            set_status(args.path, args.target, args.today, args.review_in)
             print(f"{args.path}: {args.target}")
         elif args.cmd == "render":
             print(render(args.path, args.out))

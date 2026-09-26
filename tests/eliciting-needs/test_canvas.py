@@ -46,7 +46,7 @@ class NewTest(RepoCase):
         self.assertEqual(meta["status"], "draft")
         self.assertEqual(meta["owner"], "Anna")
         self.assertEqual(meta["mode"], "")
-        self.assertEqual(list(sections), list(canvas.SECTIONS))
+        self.assertEqual(list(sections), [*canvas.SECTIONS, canvas.FOLLOW_UP])
 
     def test_new_refuses_existing_dir(self):
         canvas.new(self.root, "Same", TODAY)
@@ -73,7 +73,7 @@ class NewTest(RepoCase):
 
 def make_canvas(status="draft", mode="classic", owner="Anna", scores=None, verdict="pass",
                 success="| Lead time | 3 days | 4 h |", sketch="{fill: locked until the roast passes}",
-                extra=None):
+                extra=None, review_by=None):
     scores = scores if scores is not None else {n: 2 for n in canvas.SCORED}
     sections = {n: f"Filled {n.lower()} (said).\n" for n in canvas.SECTIONS}
     sections["Success criteria"] = f"| Metric | Baseline | Target |\n|---|---|---|\n{success}\n"
@@ -82,9 +82,10 @@ def make_canvas(status="draft", mode="classic", owner="Anna", scores=None, verdi
     sections["Solution sketch"] = f"{sketch}\n"
     sections.update(extra or {})
     body = "".join(f"## {n}\n\n{t}\n" for n, t in sections.items() if t is not None)
+    review = f"review-by: {review_by}\n" if review_by else ""
     return (
         f"---\ntitle: Supplier email triage\ndate: 2026-09-26\nstatus: {status}\n"
-        f"owner: {owner}\nmode: {mode}\n---\n\n{body}"
+        f"owner: {owner}\nmode: {mode}\n{review}---\n\n{body}"
     )
 
 
@@ -286,3 +287,63 @@ class RenderTest(RepoCase):
         page = canvas.render(canvas.new(self.root, "X", TODAY)).read_text()
         self.assertIn("html(token)", page)
         self.assertIn('token.text.startsWith("<!--")', page)
+
+
+class ShipTest(RepoCase):
+    def write(self, text):
+        path = self.root / "canvas.md"
+        path.write_text(text)
+        return path
+
+    def meta(self, path):
+        return canvas.parse(path.read_text())[0]
+
+    def test_ship_from_approved_sets_review_by(self):
+        path = self.write(make_canvas(status="approved", sketch="Plan."))
+        code, _, err = self.run_cli("status", str(path), "shipped")
+        self.assertEqual(code, 0, err)
+        self.assertEqual(self.meta(path)["status"], "shipped")
+        self.assertEqual(self.meta(path)["review-by"], "2026-10-01")
+
+    def test_ship_review_in(self):
+        path = self.write(make_canvas(status="approved", sketch="Plan."))
+        self.run_cli("status", str(path), "shipped", "--review-in", "30")
+        self.assertEqual(self.meta(path)["review-by"], "2026-10-26")
+
+    def test_reship_moves_date(self):
+        path = self.write(make_canvas(status="shipped", sketch="Plan.", review_by="2026-09-20"))
+        code, _, err = self.run_cli("status", str(path), "shipped", "--review-in", "14")
+        self.assertEqual(code, 0, err)
+        self.assertEqual(self.meta(path)["review-by"], "2026-10-10")
+        self.assertEqual(path.read_text().count("review-by:"), 1)
+
+    def test_ship_refused_from_draft(self):
+        path = self.write(make_canvas(status="roasted"))
+        code, _, err = self.run_cli("status", str(path), "shipped")
+        self.assertEqual(code, 1)
+        self.assertIn("approve it first", err)
+
+    def test_ship_refused_from_reviewed(self):
+        path = self.write(make_canvas(status="reviewed", sketch="Plan.", review_by="2026-09-20"))
+        code, _, err = self.run_cli("status", str(path), "shipped")
+        self.assertEqual(code, 1)
+        self.assertIn("approve it first", err)
+
+    def test_ship_refused_for_dont_build(self):
+        path = self.write(make_canvas(status="approved", mode="dont-build", verdict="kill", sketch="No build."))
+        code, _, err = self.run_cli("status", str(path), "shipped")
+        self.assertEqual(code, 1)
+        self.assertIn("dont-build", err)
+
+    def test_shipped_without_review_by_fails_check(self):
+        path = self.write(make_canvas(status="shipped", sketch="Plan."))
+        self.assertIn("review-by: missing or not a YYYY-MM-DD date", canvas.check(path))
+
+    def test_shipped_invalid_date_fails_check(self):
+        path = self.write(make_canvas(status="shipped", sketch="Plan.", review_by="2026-02-30"))
+        self.assertIn("review-by: missing or not a YYYY-MM-DD date", canvas.check(path))
+
+    def test_approved_with_follow_up_placeholders_is_valid(self):
+        follow = "| Metric | Baseline | Target | Measured | Met? |\n|---|---|---|---|---|\n| {fill: metric} | {fill: b} | {fill: t} | {fill: m} | {fill: y} |\n\nVerdict: {fill: keep | iterate | retire | extend}\n"
+        path = self.write(make_canvas(status="approved", sketch="Plan.", extra={"Follow-up": follow}))
+        self.assertEqual(canvas.check(path), [])

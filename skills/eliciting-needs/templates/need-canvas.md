@@ -84,3 +84,15 @@ Verdict: {fill: pass | reroute | kill}
 ## Solution sketch
 
 {fill: locked until the roast passes}
+
+## Follow-up
+
+<!-- Filled at review, after `canvas.py status <canvas> shipped`. One row per success criterion; Measured tagged (said) or (assumed); Met? is yes / no / too early. -->
+
+| Metric | Baseline | Target | Measured | Met? |
+|---|---|---|---|---|
+| {fill: metric} | {fill: baseline} | {fill: target} | {fill: measured, tagged} | {fill: yes / no / too early} |
+
+Eval pass rate: {fill: result of the project's eval tests, or "no eval set"}
+
+Verdict: {fill: keep | iterate | retire | extend}
