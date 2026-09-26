@@ -34,5 +34,5 @@ Third-party skills keep their original license and author credit in the skill di
 
 1. `scripts/bump-version.sh X.Y.Z`: bumps both manifests and audits for stray version strings.
 2. Add an `X.Y.Z` entry at the top of `RELEASE-NOTES.md`.
-3. `claude plugin validate --strict .`: must exit 0.
+3. `claude plugin validate --strict .claude-plugin/marketplace.json && claude plugin validate --strict .claude-plugin/plugin.json`: both must exit 0 (validating `.` checks only the marketplace).
 4. Commit as `chore: release X.Y.Z`, merge to `main`, then `claude plugin tag`.

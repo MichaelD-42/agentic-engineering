@@ -16,5 +16,5 @@
 
 ## Checklist
 - [ ] One logical change
-- [ ] `claude plugin validate --strict .` passes
+- [ ] `claude plugin validate --strict` passes for both `.claude-plugin/marketplace.json` and `.claude-plugin/plugin.json`
 - [ ] `scripts/bump-version.sh --check` shows no drift
