@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{title}}</title>
+<style>
+:root { --bg:#fbfaf7; --fg:#1d1d1b; --muted:#6b6862; --line:#e4e0d8; --accent:#9a4a1c; --code:#f1eee7; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg:#161513; --fg:#ece9e2; --muted:#a19d95; --line:#2e2c28; --accent:#e08a55; --code:#211f1c; }
+}
+:root[data-theme="dark"] { --bg:#161513; --fg:#ece9e2; --muted:#a19d95; --line:#2e2c28; --accent:#e08a55; --code:#211f1c; }
+body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.6 system-ui, sans-serif; }
+main { max-width:860px; margin:0 auto; padding:32px 16px 64px; }
+h1 { font-size:1.9rem; line-height:1.2; margin:0 0 4px; }
+header p { color:var(--muted); margin:0 0 24px; }
+h2 { font-size:1.15rem; margin:40px 0 8px; padding-top:16px; border-top:1px solid var(--line); }
+table { border-collapse:collapse; display:block; overflow-x:auto; }
+th, td { border-bottom:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; }
+code, pre { background:var(--code); border-radius:4px; }
+pre { padding:12px; overflow-x:auto; }
+pre.mermaid { background:transparent; text-align:center; }
+blockquote { margin:0; padding-left:14px; border-left:3px solid var(--accent); color:var(--muted); }
+</style>
+</head>
+<body>
+<main>
+<header><h1>{{title}}</h1><p>{{meta}}</p></header>
+<article id="canvas"></article>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/marked@18/lib/marked.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@12/dist/mermaid.min.js"></script>
+<script>
+const MARKDOWN = {{markdown_json}};
+const root = document.documentElement;
+const el = document.getElementById("canvas");
+const escapeHtml = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+// Show raw HTML in the canvas as text (verbatim quotes like "<machine>_<date>.csv"); keep comments hidden.
+marked.use({ renderer: { html(token) { return token.text.startsWith("<!--") ? "" : escapeHtml(token.text); } } });
+el.innerHTML = marked.parse(MARKDOWN);
+el.querySelectorAll("pre > code.language-mermaid").forEach((code) => {
+  const pre = code.parentElement;
+  pre.className = "mermaid";
+  pre.textContent = code.textContent;
+});
+const dark = root.dataset.theme === "dark" ||
+  (root.dataset.theme !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);
+mermaid.initialize({ startOnLoad: false, theme: dark ? "dark" : "neutral" });
+mermaid.run({ querySelector: "pre.mermaid" });
+</script>
+</body>
+</html>

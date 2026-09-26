@@ -25,6 +25,7 @@ To update: `/plugin marketplace update agentic-engineering`.
 
 | Skill | Use when |
 |-------|----------|
+| `eliciting-needs` | Someone brings a first idea for an AI use case, tool, bot, agent or automation, before any solution is designed. Turns the idea into a need canvas, roasts it, and only then sketches the least-AI solution that meets it (often a script, sometimes "don't build"). |
 | `recording-decisions` | Choosing between approaches, libraries, data models or architectural patterns, or recording, superseding or reviewing a decision. Gates which decisions get an ADR, writes MADR 4.0 records with `adr.py`, and blocks edits to decided ADRs. |
 
 ## Principles

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add the `eliciting-needs` skill: need canvas (`canvas.py`), plain-language probes, AI-fit classification and roast rubric, with an optional live view through the Superpowers visual companion (ADR-0003).
 - Add the `recording-decisions` skill: ADR gate, `adr.py` CLI (new, accept, supersede, check, stale, index), MADR 4.0 templates, and hooks that block edits to decided ADRs and validate every ADR write.
 
 ## 0.1.0 — 2026-09-26
