@@ -1,5 +1,5 @@
 ---
-status: bogus
+status: accepted
 date: 2026-09-26
 decision-makers: Michael
 review-by: 2027-09-26
