@@ -12,6 +12,8 @@ This plugin depends on [Superpowers](https://github.com/obra/superpowers). Its s
 /plugin install superpowers@claude-plugins-official
 ```
 
+If Superpowers is missing or disabled, the plugin says so at session start.
+
 ## Installation
 
 ```text

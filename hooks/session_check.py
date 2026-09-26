@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """SessionStart hook: warn when Superpowers or its visual companion is missing."""
 
+import json
+import subprocess
+import sys
 from pathlib import Path
 
 COMPANION = Path("skills/brainstorming/scripts/start-server.sh")
@@ -36,3 +39,42 @@ def problems(plugins: list) -> tuple[str, str | None] | None:
     if not any(p.get("installPath") and (Path(p["installPath"]) / COMPANION).is_file() for p in enabled):
         return NO_COMPANION_USER, None
     return None
+
+
+def plugin_list() -> list | None:
+    """`claude plugin list --json`, or None if it can't be had."""
+    try:
+        result = subprocess.run(
+            ["claude", "plugin", "list", "--json"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if result.returncode != 0:
+        return None
+    try:
+        plugins = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return None
+    return plugins if isinstance(plugins, list) else None
+
+
+def main() -> int:
+    plugins = plugin_list()
+    found = problems(plugins) if plugins is not None else None
+    if found:
+        user, model = found
+        output = {"systemMessage": user}
+        if model:
+            output["hookSpecificOutput"] = {
+                "hookEventName": "SessionStart",
+                "additionalContext": model,
+            }
+        print(json.dumps(output))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
