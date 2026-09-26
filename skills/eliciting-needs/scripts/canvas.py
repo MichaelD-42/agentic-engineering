@@ -118,6 +118,44 @@ def roast_problems(roast: str, mode: str) -> list[str]:
     return found
 
 
+FOLLOW_VERDICT = re.compile(r"^Verdict:[ \t]*(keep|iterate|retire|extend)\b", re.M | re.I)
+EVAL_LINE = re.compile(r"^Eval pass rate:[ \t]*\S", re.M)
+
+
+def table_cells(text: str) -> list[list[str]]:
+    """Stripped cells of each markdown table row after the header and separator."""
+    rows = [
+        [cell.strip() for cell in line.strip()[1:-1].split("|")]
+        for line in text.splitlines()
+        if line.strip().startswith("|") and line.strip().endswith("|")
+    ]
+    return [r for r in rows[1:] if not all(re.fullmatch(r":?-+:?", c) for c in r)]
+
+
+def follow_up_problems(sections: dict[str, str]) -> list[str]:
+    text = sections.get(FOLLOW_UP)
+    if text is None:
+        return [f"missing section: ## {FOLLOW_UP}"]
+    if PLACEHOLDER.search(text):
+        return [f"{FOLLOW_UP}: unfilled {{fill: …}} placeholder"]
+    rows = {cells[0]: cells for cells in table_cells(text)}
+    found = []
+    for metric in (r[0] for r in table_cells(sections["Success criteria"]) if r[0]):
+        row = rows.get(metric)
+        if row is None:
+            found.append(f"{FOLLOW_UP}: no row for '{metric}'")
+        elif len(row) < 4 or not row[3]:
+            found.append(f"{FOLLOW_UP}: '{metric}' has no measured value")
+    if not EVAL_LINE.search(text):
+        found.append(f"{FOLLOW_UP}: no 'Eval pass rate:' line")
+    verdict = FOLLOW_VERDICT.search(text)
+    if not verdict:
+        found.append(f"{FOLLOW_UP}: no 'Verdict: keep|iterate|retire' line")
+    elif verdict.group(1).lower() == "extend":
+        found.append(f"{FOLLOW_UP}: verdict extend — re-run status shipped --review-in DAYS")
+    return found
+
+
 def problems(meta: dict[str, str], sections: dict[str, str], status: str) -> list[str]:
     found = [f"frontmatter: missing '{f}'" for f in FIELDS if f not in meta]
     found += [f"missing section: ## {s}" for s in SECTIONS if s not in sections]
@@ -155,6 +193,8 @@ def problems(meta: dict[str, str], sections: dict[str, str], status: str) -> lis
             found.append("mode: dont-build — nothing to ship")
         if not valid_date(meta.get("review-by", "")):
             found.append("review-by: missing or not a YYYY-MM-DD date")
+    if status == "reviewed":
+        found += follow_up_problems(sections)
     return found
 
 

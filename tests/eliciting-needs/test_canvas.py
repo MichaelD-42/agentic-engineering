@@ -347,3 +347,66 @@ class ShipTest(RepoCase):
         follow = "| Metric | Baseline | Target | Measured | Met? |\n|---|---|---|---|---|\n| {fill: metric} | {fill: b} | {fill: t} | {fill: m} | {fill: y} |\n\nVerdict: {fill: keep | iterate | retire | extend}\n"
         path = self.write(make_canvas(status="approved", sketch="Plan.", extra={"Follow-up": follow}))
         self.assertEqual(canvas.check(path), [])
+
+
+FOLLOW = (
+    "| Metric | Baseline | Target | Measured | Met? |\n|---|---|---|---|---|\n"
+    "| Lead time | 3 days | 4 h | 5 h (said) | no |\n\n"
+    "Eval pass rate: no eval set\n\nVerdict: iterate\n"
+)
+
+
+class ReviewTest(RepoCase):
+    def shipped(self, follow=FOLLOW):
+        path = self.root / "canvas.md"
+        extra = {"Follow-up": follow} if follow is not None else None
+        path.write_text(make_canvas(status="shipped", sketch="Plan.", review_by="2026-09-20", extra=extra))
+        return path
+
+    def blocked(self, path):
+        code, _, err = self.run_cli("status", str(path), "reviewed")
+        self.assertEqual(code, 1)
+        return err
+
+    def test_review_passes(self):
+        path = self.shipped()
+        code, _, err = self.run_cli("status", str(path), "reviewed")
+        self.assertEqual(code, 0, err)
+        self.assertEqual(canvas.parse(path.read_text())[0]["status"], "reviewed")
+        self.assertEqual(canvas.check(path), [])
+
+    def test_review_refused_from_approved(self):
+        path = self.root / "canvas.md"
+        path.write_text(make_canvas(status="approved", sketch="Plan.", extra={"Follow-up": FOLLOW}))
+        self.assertIn("ship it first", self.blocked(path))
+
+    def test_review_missing_section(self):
+        self.assertIn("missing section: ## Follow-up", self.blocked(self.shipped(follow=None)))
+
+    def test_review_placeholder(self):
+        err = self.blocked(self.shipped(FOLLOW.replace("5 h (said)", "{fill: measured}")))
+        self.assertIn("Follow-up: unfilled {fill: …} placeholder", err)
+
+    def test_review_missing_metric_row(self):
+        err = self.blocked(self.shipped(FOLLOW.replace("| Lead time |", "| Speed |")))
+        self.assertIn("Follow-up: no row for 'Lead time'", err)
+
+    def test_review_metric_match_strips_whitespace(self):
+        path = self.shipped(FOLLOW.replace("| Lead time |", "|   Lead time    |"))
+        self.assertEqual(self.run_cli("status", str(path), "reviewed")[0], 0)
+
+    def test_review_empty_measured(self):
+        err = self.blocked(self.shipped(FOLLOW.replace("5 h (said)", "")))
+        self.assertIn("Follow-up: 'Lead time' has no measured value", err)
+
+    def test_review_missing_eval_line(self):
+        err = self.blocked(self.shipped(FOLLOW.replace("Eval pass rate: no eval set\n", "")))
+        self.assertIn("Follow-up: no 'Eval pass rate:' line", err)
+
+    def test_review_missing_verdict(self):
+        err = self.blocked(self.shipped(FOLLOW.replace("Verdict: iterate\n", "")))
+        self.assertIn("Follow-up: no 'Verdict: keep|iterate|retire' line", err)
+
+    def test_review_extend_refused(self):
+        err = self.blocked(self.shipped(FOLLOW.replace("Verdict: iterate", "Verdict: extend")))
+        self.assertIn("re-run status shipped --review-in DAYS", err)
