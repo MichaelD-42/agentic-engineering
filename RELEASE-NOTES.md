@@ -1,5 +1,9 @@
 # Release Notes
 
+## Unreleased
+
+- Add the `recording-decisions` skill: ADR gate, `adr.py` CLI (new, accept, supersede, check, stale, index), MADR 4.0 templates, and hooks that block edits to decided ADRs and validate every ADR write.
+
 ## 0.1.0 — 2026-09-26
 
 - Bootstrap the `agentic-engineering` plugin and marketplace (Claude Code).
