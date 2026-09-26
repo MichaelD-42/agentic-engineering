@@ -14,5 +14,6 @@
     "tdd",
     "workflows",
     "best-practices"
-  ]
+  ],
+  "bogusField": "x"
 }
