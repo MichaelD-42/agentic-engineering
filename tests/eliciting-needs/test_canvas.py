@@ -410,3 +410,41 @@ class ReviewTest(RepoCase):
     def test_review_extend_refused(self):
         err = self.blocked(self.shipped(FOLLOW.replace("Verdict: iterate", "Verdict: extend")))
         self.assertIn("re-run status shipped --review-in DAYS", err)
+
+
+class StaleTest(RepoCase):
+    def put(self, name, status, review_by=None):
+        path = self.root / "docs/needs" / name / "canvas.md"
+        path.parent.mkdir(parents=True)
+        path.write_text(make_canvas(status=status, sketch="Plan.", review_by=review_by))
+
+    def test_stale_lists_due_and_overdue_only(self):
+        self.put("a-due-today", "shipped", "2026-09-26")
+        self.put("b-overdue", "shipped", "2026-09-01")
+        self.put("c-tomorrow", "shipped", "2026-09-27")
+        self.put("d-reviewed", "reviewed", "2026-09-01")
+        self.put("e-approved", "approved")
+        self.assertEqual(
+            canvas.stale(self.root, TODAY),
+            [
+                "docs/needs/a-due-today/canvas.md: review due (review-by 2026-09-26)",
+                "docs/needs/b-overdue/canvas.md: review due (review-by 2026-09-01)",
+            ],
+        )
+
+    def test_stale_lists_unreadable(self):
+        self.put("x", "shipped", "2026-02-30")
+        self.assertEqual(
+            canvas.stale(self.root, TODAY),
+            ["docs/needs/x/canvas.md: unreadable review-by '2026-02-30'"],
+        )
+
+    def test_stale_no_needs_dir(self):
+        code, out, _ = self.run_cli("stale")
+        self.assertEqual((code, out), (0, ""))
+
+    def test_cli_stale_exit_0_with_findings(self):
+        self.put("b-overdue", "shipped", "2026-09-01")
+        code, out, _ = self.run_cli("stale")
+        self.assertEqual(code, 0)
+        self.assertIn("review due", out)

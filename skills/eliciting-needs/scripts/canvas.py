@@ -262,6 +262,25 @@ def new(root: Path, title: str, today: dt.date, owner: str = "") -> Path:
     return path
 
 
+def stale(root: Path, today: dt.date) -> list[str]:
+    """Shipped canvases whose review is due, and unreadable review dates."""
+    found = []
+    for path in sorted((root / NEEDS_DIR).glob("*/canvas.md")):
+        try:
+            meta, _ = parse(read(path))
+        except CanvasError:
+            continue
+        if meta.get("status") != "shipped":
+            continue
+        review = meta.get("review-by", "")
+        name = path.relative_to(root)
+        if not valid_date(review):
+            found.append(f"{name}: unreadable review-by '{review}'")
+        elif dt.date.fromisoformat(review) <= today:
+            found.append(f"{name}: review due (review-by {review})")
+    return found
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="canvas.py", description=__doc__)
     parser.add_argument("--root", type=Path, default=Path.cwd())
@@ -278,6 +297,7 @@ def main(argv: list[str] | None = None) -> int:
     p_status.add_argument("path", type=Path)
     p_status.add_argument("target", choices=STATUSES)
     p_status.add_argument("--review-in", type=int, default=REVIEW_DAYS)
+    sub.add_parser("stale", help="list shipped canvases whose review is due")
     p_render = sub.add_parser(
         "render", help="write a self-contained HTML page for the canvas"
     )
@@ -294,6 +314,10 @@ def main(argv: list[str] | None = None) -> int:
         elif args.cmd == "status":
             set_status(args.path, args.target, args.today, args.review_in)
             print(f"{args.path}: {args.target}")
+        elif args.cmd == "stale":
+            found = stale(args.root, args.today)
+            if found:
+                print("\n".join(found))
         elif args.cmd == "render":
             print(render(args.path, args.out))
     except CanvasError as exc:
