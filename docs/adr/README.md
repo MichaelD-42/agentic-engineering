@@ -5,5 +5,5 @@
 | --- | --- | --- |
 | [0001](0001-ship-the-collection-as-one-root-plugin-superpowers-style.md) | Ship the collection as one root plugin, superpowers-style | accepted |
 | [0002](0002-document-superpowers-as-a-required-dependency-instead-of-dec.md) | Document Superpowers as a required dependency instead of declaring it | accepted |
-| [0003](0003-reuse-the-superpowers-visual-companion-instead-of-vendoring.md) | Reuse the superpowers visual companion instead of vendoring it | proposed |
+| [0003](0003-reuse-the-superpowers-visual-companion-instead-of-vendoring.md) | Reuse the superpowers visual companion instead of vendoring it | accepted |
 <!-- adr-index:end -->
