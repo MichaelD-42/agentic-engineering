@@ -7,6 +7,8 @@ Blunt about the idea, never about the person. Every score below 2 names the ques
 - **1**: vague, or rests on `(assumed)` claims
 - **2**: specific, `(said)` by the driver, verifiable
 
+`canvas.py` enforces the 1 on a pass: a cell scored 2 whose section contains `(assumed)` blocks `roasted`.
+
 Constraints and risks scores 2 only if it says what happens to people when the output is wrong (who notices, what it costs), not just that the model can err.
 Cost of the problem scores 2 only if it separates the realistic from the optimistic figure.
 

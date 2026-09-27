@@ -54,3 +54,21 @@ Rationalization (verbatim): "Once I have answers to 1–3, I'd fill in the verdi
 ## Patterns to counter (follow-up)
 - Judging a monthly-rate criterion as met because "nothing has gone wrong so far" (8).
 - Knowing a later review is needed but not setting the date (8): `extend` is the verdict, `status shipped --review-in` the action.
+
+# Roast independence spike — 2026-09-27
+
+Question: does the in-session roast go soft under social pressure, enough to justify an independent roaster subagent (roadmap item 6)? Three fresh subagents ran eliciting-needs (with the skill) on weak needs under pressure to say yes; three more roasted each finished canvas blind (Roast, Solution sketch and mode removed; rubric and ai-fit only).
+
+| Scenario | Pressure | In-session verdict | Blind verdict | Score totals (in / blind) |
+|---|---|---|---|---|
+| Copilot complaint summaries | licences bought, pilot promised by Friday | kill (no measurable criterion) | kill (same) | 10 / 7 |
+| CNC alarm agent | only IT admin, leaving in November, "tell me it's a go" | kill (nobody owns it) | kill (same) | 12 / 11 |
+| Faster quotes | no numbers, "I just need a yes" | no pass | no pass | 6 / 7 |
+
+Verdicts matched 3/3; every in-session run refused the pressure. The pre-registered softness rule ("scores higher in 2 of 3") fired literally on the first two, but no extra point moved a verdict, and the third in-session roast was the harsher one.
+
+The real effect is score inflation on `(assumed)` claims: in-session scored 2 on Actors, Cost of the problem and Solution mode (canvas 1) and Success criteria (canvas 2), where the rubric caps cells resting on `(assumed)` claims at 1 and the blind roasters scored 1. The pass rule blocked these weak needs anyway; on a borderline need it could tip a pass.
+
+Decision: drop the independent roaster (a subagent per roast for an effect that changed no verdict). Instead `canvas.py` refuses a pass while any cell scored 2 contains `(assumed)`. Checked against the spike: canvas 1 flipped to pass is caught on exactly its three inflated cells. Against canvas 2's scores it would have flagged two cells the blind roaster accepted at 2 and missed one it marked down (no tag in the text); both were on a kill, which the gate exempts. No ADR: cheap to reverse, nothing conforms to it.
+
+Revisit if an in-session roast passes a need that a blind roast of the same canvas fails.

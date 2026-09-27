@@ -9,7 +9,10 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
 SCRIPTS = (
-    Path(__file__).resolve().parent.parent.parent / "skills" / "eliciting-needs" / "scripts"
+    Path(__file__).resolve().parent.parent.parent
+    / "skills"
+    / "eliciting-needs"
+    / "scripts"
 )
 sys.path.insert(0, str(SCRIPTS))
 import canvas  # noqa: E402
@@ -71,14 +74,26 @@ class NewTest(RepoCase):
         )
 
 
-def make_canvas(status="draft", mode="classic", owner="Anna", scores=None, verdict="pass",
-                success="| Lead time | 3 days | 4 h |", sketch="{fill: locked until the roast passes}",
-                extra=None, review_by=None):
+def make_canvas(
+    status="draft",
+    mode="classic",
+    owner="Anna",
+    scores=None,
+    verdict="pass",
+    success="| Lead time | 3 days | 4 h |",
+    sketch="{fill: locked until the roast passes}",
+    extra=None,
+    review_by=None,
+):
     scores = scores if scores is not None else {n: 2 for n in canvas.SCORED}
     sections = {n: f"Filled {n.lower()} (said).\n" for n in canvas.SECTIONS}
-    sections["Success criteria"] = f"| Metric | Baseline | Target |\n|---|---|---|\n{success}\n"
+    sections["Success criteria"] = (
+        f"| Metric | Baseline | Target |\n|---|---|---|\n{success}\n"
+    )
     rows = "\n".join(f"| {n} | {s} | ok |" for n, s in scores.items())
-    sections["Roast"] = f"| Cell | Score | Why |\n|---|---|---|\n{rows}\n\nVerdict: {verdict}\n"
+    sections["Roast"] = (
+        f"| Cell | Score | Why |\n|---|---|---|\n{rows}\n\nVerdict: {verdict}\n"
+    )
     sections["Solution sketch"] = f"{sketch}\n"
     sections.update(extra or {})
     body = "".join(f"## {n}\n\n{t}\n" for n, t in sections.items() if t is not None)
@@ -127,7 +142,9 @@ class CheckTest(RepoCase):
         self.assertEqual(self.check_text(make_canvas(status="roasted")), [])
 
     def test_roasted_with_placeholder(self):
-        found = self.check_text(make_canvas(status="roasted", extra={"Actors": "{fill: who}\n"}))
+        found = self.check_text(
+            make_canvas(status="roasted", extra={"Actors": "{fill: who}\n"})
+        )
         self.assertEqual(found, ["Actors: unfilled {fill: …} placeholder"])
 
     def test_roasted_without_owner(self):
@@ -135,11 +152,15 @@ class CheckTest(RepoCase):
         self.assertEqual(found, ["owner: empty — someone must own this after launch"])
 
     def test_roasted_success_without_number(self):
-        found = self.check_text(make_canvas(status="roasted", success="| Speed | slow | fast |"))
+        found = self.check_text(
+            make_canvas(status="roasted", success="| Speed | slow | fast |")
+        )
         self.assertEqual(found, ["Success criteria: no number with a unit"])
 
     def test_number_on_next_line_is_not_a_unit(self):
-        found = self.check_text(make_canvas(status="roasted", success="| Speed | 3 | 4 |"))
+        found = self.check_text(
+            make_canvas(status="roasted", success="| Speed | 3 | 4 |")
+        )
         self.assertEqual(found, ["Success criteria: no number with a unit"])
 
     def test_roasted_missing_score(self):
@@ -159,19 +180,59 @@ class CheckTest(RepoCase):
 
     def test_roasted_missing_verdict(self):
         text = make_canvas(status="roasted").replace("Verdict: pass", "")
-        self.assertEqual(self.check_text(text), ["Roast: no 'Verdict: pass|reroute|kill' line"])
+        self.assertEqual(
+            self.check_text(text), ["Roast: no 'Verdict: pass|reroute|kill' line"]
+        )
 
     def test_reroute_blocks(self):
         found = self.check_text(make_canvas(status="roasted", verdict="reroute"))
-        self.assertEqual(found, ["Roast: verdict is reroute — change the mode and roast again"])
+        self.assertEqual(
+            found, ["Roast: verdict is reroute — change the mode and roast again"]
+        )
 
     def test_kill_needs_no_build_mode(self):
-        found = self.check_text(make_canvas(status="roasted", verdict="kill", mode="agent"))
-        self.assertEqual(found, ["Roast: kill verdict needs mode process-change or dont-build"])
+        found = self.check_text(
+            make_canvas(status="roasted", verdict="kill", mode="agent")
+        )
+        self.assertEqual(
+            found, ["Roast: kill verdict needs mode process-change or dont-build"]
+        )
 
     def test_kill_with_dont_build_passes_despite_zero(self):
         scores = {n: 2 for n in canvas.SCORED} | {"Cost of the problem": 0}
-        text = make_canvas(status="roasted", verdict="kill", mode="dont-build", scores=scores)
+        text = make_canvas(
+            status="roasted", verdict="kill", mode="dont-build", scores=scores
+        )
+        self.assertEqual(self.check_text(text), [])
+
+    def test_pass_refuses_two_resting_on_assumed(self):
+        text = make_canvas(
+            status="roasted", extra={"Actors": "Operator: the team lead (assumed).\n"}
+        )
+        self.assertEqual(
+            self.check_text(text),
+            [
+                "Roast: Actors scored 2 but rests on (assumed) claims — score it 1, "
+                "or confirm the claim with the driver and tag it (said)"
+            ],
+        )
+
+    def test_pass_allows_one_resting_on_assumed(self):
+        scores = {n: 2 for n in canvas.SCORED} | {"Actors": 1}
+        text = make_canvas(
+            status="roasted",
+            scores=scores,
+            extra={"Actors": "Operator: the team lead (assumed).\n"},
+        )
+        self.assertEqual(self.check_text(text), [])
+
+    def test_kill_ignores_two_resting_on_assumed(self):
+        text = make_canvas(
+            status="roasted",
+            verdict="kill",
+            mode="dont-build",
+            extra={"Actors": "Operator: the team lead (assumed).\n"},
+        )
         self.assertEqual(self.check_text(text), [])
 
     def test_kill_without_measure_or_owner_passes(self):
@@ -189,7 +250,9 @@ class CheckTest(RepoCase):
         self.assertEqual(found, ["Solution sketch: not filled"])
 
     def test_valid_approved(self):
-        text = make_canvas(status="approved", sketch="A uv script that renames CSV exports.")
+        text = make_canvas(
+            status="approved", sketch="A uv script that renames CSV exports."
+        )
         self.assertEqual(self.check_text(text), [])
 
     def test_crlf_canvas_parses(self):
@@ -207,7 +270,9 @@ class CheckTest(RepoCase):
         self.assertEqual(self.run_cli("check", str(path))[:2], (0, "ok\n"))
         path.write_text(make_canvas(sketch="too early"))
         code, out, _ = self.run_cli("check", str(path))
-        self.assertEqual((code, out), (1, "Solution sketch: filled before the roast passed\n"))
+        self.assertEqual(
+            (code, out), (1, "Solution sketch: filled before the roast passed\n")
+        )
 
 
 class StatusTest(RepoCase):
@@ -235,7 +300,9 @@ class StatusTest(RepoCase):
         self.assertEqual(canvas.parse(path.read_text())[0]["status"], "draft")
 
     def test_status_only_touches_frontmatter(self):
-        text = make_canvas(extra={"Open questions": "status: draft of the supplier list?\n"})
+        text = make_canvas(
+            extra={"Open questions": "status: draft of the supplier list?\n"}
+        )
         path = self.write(text)
         canvas.set_status(path, "roasted")
         self.assertIn("status: draft of the supplier list?", path.read_text())
@@ -257,7 +324,9 @@ class RenderTest(RepoCase):
         self.assertIn("<title>Shift &lt;report&gt; triage</title>", page)
         self.assertIn("status: draft · mode: — · owner: Ben", page)
         self.assertIn("https://cdn.jsdelivr.net/npm/marked@18/lib/marked.umd.js", page)
-        self.assertIn("https://cdn.jsdelivr.net/npm/mermaid@12/dist/mermaid.min.js", page)
+        self.assertIn(
+            "https://cdn.jsdelivr.net/npm/mermaid@12/dist/mermaid.min.js", page
+        )
 
     def test_render_embeds_body_without_frontmatter(self):
         path = canvas.new(self.root, "X", TODAY)
@@ -269,7 +338,11 @@ class RenderTest(RepoCase):
 
     def test_render_escapes_script_breakout(self):
         path = self.root / "canvas.md"
-        path.write_text(make_canvas(extra={"Open questions": "</script><script>alert(1)</script> <!--\n"}))
+        path.write_text(
+            make_canvas(
+                extra={"Open questions": "</script><script>alert(1)</script> <!--\n"}
+            )
+        )
         page = canvas.render(path).read_text()
         self.assertNotIn("<script>alert", page)
         self.assertEqual(page.count("</script>"), 3)
@@ -281,7 +354,6 @@ class RenderTest(RepoCase):
         code, out, _ = self.run_cli("render", str(path), "--out", str(target))
         self.assertEqual((code, out.strip()), (0, str(target)))
         self.assertTrue(target.is_file())
-
 
     def test_render_escapes_raw_html_blocks(self):
         page = canvas.render(canvas.new(self.root, "X", TODAY)).read_text()
@@ -311,7 +383,9 @@ class ShipTest(RepoCase):
         self.assertEqual(self.meta(path)["review-by"], "2026-10-26")
 
     def test_reship_moves_date(self):
-        path = self.write(make_canvas(status="shipped", sketch="Plan.", review_by="2026-09-20"))
+        path = self.write(
+            make_canvas(status="shipped", sketch="Plan.", review_by="2026-09-20")
+        )
         code, _, err = self.run_cli("status", str(path), "shipped", "--review-in", "14")
         self.assertEqual(code, 0, err)
         self.assertEqual(self.meta(path)["review-by"], "2026-10-10")
@@ -324,13 +398,19 @@ class ShipTest(RepoCase):
         self.assertIn("approve it first", err)
 
     def test_ship_refused_from_reviewed(self):
-        path = self.write(make_canvas(status="reviewed", sketch="Plan.", review_by="2026-09-20"))
+        path = self.write(
+            make_canvas(status="reviewed", sketch="Plan.", review_by="2026-09-20")
+        )
         code, _, err = self.run_cli("status", str(path), "shipped")
         self.assertEqual(code, 1)
         self.assertIn("approve it first", err)
 
     def test_ship_refused_for_dont_build(self):
-        path = self.write(make_canvas(status="approved", mode="dont-build", verdict="kill", sketch="No build."))
+        path = self.write(
+            make_canvas(
+                status="approved", mode="dont-build", verdict="kill", sketch="No build."
+            )
+        )
         code, _, err = self.run_cli("status", str(path), "shipped")
         self.assertEqual(code, 1)
         self.assertIn("dont-build", err)
@@ -340,12 +420,16 @@ class ShipTest(RepoCase):
         self.assertIn("review-by: missing or not a YYYY-MM-DD date", canvas.check(path))
 
     def test_shipped_invalid_date_fails_check(self):
-        path = self.write(make_canvas(status="shipped", sketch="Plan.", review_by="2026-02-30"))
+        path = self.write(
+            make_canvas(status="shipped", sketch="Plan.", review_by="2026-02-30")
+        )
         self.assertIn("review-by: missing or not a YYYY-MM-DD date", canvas.check(path))
 
     def test_approved_with_follow_up_placeholders_is_valid(self):
         follow = "| Metric | Baseline | Target | Measured | Met? |\n|---|---|---|---|---|\n| {fill: metric} | {fill: b} | {fill: t} | {fill: m} | {fill: y} |\n\nVerdict: {fill: keep | iterate | retire | extend}\n"
-        path = self.write(make_canvas(status="approved", sketch="Plan.", extra={"Follow-up": follow}))
+        path = self.write(
+            make_canvas(status="approved", sketch="Plan.", extra={"Follow-up": follow})
+        )
         self.assertEqual(canvas.check(path), [])
 
 
@@ -360,7 +444,11 @@ class ReviewTest(RepoCase):
     def shipped(self, follow=FOLLOW):
         path = self.root / "canvas.md"
         extra = {"Follow-up": follow} if follow is not None else None
-        path.write_text(make_canvas(status="shipped", sketch="Plan.", review_by="2026-09-20", extra=extra))
+        path.write_text(
+            make_canvas(
+                status="shipped", sketch="Plan.", review_by="2026-09-20", extra=extra
+            )
+        )
         return path
 
     def blocked(self, path):
@@ -377,14 +465,20 @@ class ReviewTest(RepoCase):
 
     def test_review_refused_from_approved(self):
         path = self.root / "canvas.md"
-        path.write_text(make_canvas(status="approved", sketch="Plan.", extra={"Follow-up": FOLLOW}))
+        path.write_text(
+            make_canvas(status="approved", sketch="Plan.", extra={"Follow-up": FOLLOW})
+        )
         self.assertIn("ship it first", self.blocked(path))
 
     def test_review_missing_section(self):
-        self.assertIn("missing section: ## Follow-up", self.blocked(self.shipped(follow=None)))
+        self.assertIn(
+            "missing section: ## Follow-up", self.blocked(self.shipped(follow=None))
+        )
 
     def test_review_placeholder(self):
-        err = self.blocked(self.shipped(FOLLOW.replace("5 h (said)", "{fill: measured}")))
+        err = self.blocked(
+            self.shipped(FOLLOW.replace("5 h (said)", "{fill: measured}"))
+        )
         self.assertIn("Follow-up: unfilled {fill: …} placeholder", err)
 
     def test_review_missing_metric_row(self):
@@ -398,8 +492,15 @@ class ReviewTest(RepoCase):
     def test_review_metric_match_ignores_tags_and_case(self):
         path = self.root / "canvas.md"
         follow = FOLLOW.replace("| Lead time |", "| lead time |")
-        path.write_text(make_canvas(status="shipped", sketch="Plan.", review_by="2026-09-20",
-                                    success="| Lead time (said) | 3 days | 4 h |", extra={"Follow-up": follow}))
+        path.write_text(
+            make_canvas(
+                status="shipped",
+                sketch="Plan.",
+                review_by="2026-09-20",
+                success="| Lead time (said) | 3 days | 4 h |",
+                extra={"Follow-up": follow},
+            )
+        )
         code, _, err = self.run_cli("status", str(path), "reviewed")
         self.assertEqual(code, 0, err)
 
@@ -408,7 +509,9 @@ class ReviewTest(RepoCase):
         self.assertIn("Follow-up: 'Lead time' has no measured value", err)
 
     def test_review_missing_eval_line(self):
-        err = self.blocked(self.shipped(FOLLOW.replace("Eval pass rate: no eval set\n", "")))
+        err = self.blocked(
+            self.shipped(FOLLOW.replace("Eval pass rate: no eval set\n", ""))
+        )
         self.assertIn("Follow-up: no 'Eval pass rate:' line", err)
 
     def test_review_missing_verdict(self):
@@ -416,7 +519,9 @@ class ReviewTest(RepoCase):
         self.assertIn("Follow-up: no 'Verdict: keep|iterate|retire' line", err)
 
     def test_review_extend_refused(self):
-        err = self.blocked(self.shipped(FOLLOW.replace("Verdict: iterate", "Verdict: extend")))
+        err = self.blocked(
+            self.shipped(FOLLOW.replace("Verdict: iterate", "Verdict: extend"))
+        )
         self.assertIn("re-run status shipped --review-in DAYS", err)
 
 
