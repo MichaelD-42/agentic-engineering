@@ -1,6 +1,6 @@
 # Release Notes
 
-## Unreleased
+## 0.2.0 — 2026-09-27
 
 - `eliciting-needs`: a `pass` roast can't score 2 on a cell that still rests on `(assumed)` claims; `canvas.py` refuses it. Replaces the planned independent roaster, which a spike showed wasn't needed (see `tests/eliciting-needs/scenarios/BASELINE.md`).
 - `eliciting-needs`: canvases continue past approval: `shipped` sets a `review-by` date (default 5 days, `--review-in`), `canvas.py stale` lists due reviews, and `reviewed` requires a Follow-up with measured values and a keep/iterate/retire verdict (`extend` re-ships instead).
