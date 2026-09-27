@@ -10,6 +10,14 @@ setup() {
 	local dest=$2
 	mkdir -p "$dest" && cd "$dest" && git init -q
 	printf '# Keller Präzisionsteile\n\nContract manufacturer of turned and milled precision parts, 120 staff, two sites. IT is one admin; no software developers.\n' >README.md
+	case $1 in
+	7 | 8)
+		local day review
+		if [ "$1" = 7 ]; then day=2026-09-01 review=2026-09-15; else day=2026-09-21 review=2026-09-26; fi
+		mkdir -p "docs/needs/$day-supplier-email-triage"
+		sed -e "s/__REVIEW_BY__/$review/" -e "s/^date: .*/date: $day/" "$HERE/fixtures/shipped-canvas.md" >"docs/needs/$day-supplier-email-triage/canvas.md"
+		;;
+	esac
 	git add -A && git -c user.name=t -c user.email=t@t commit -qm "scenario $1"
 }
 
@@ -21,6 +29,8 @@ prompt() {
 	4) echo "I'm the site manager. Our quotation process is too slow and I want AI to speed it up. Facts: I don't have numbers, it just feels slow and customers complain sometimes; quotes are done by two sales engineers in Excel. $ONLY_FACTS" ;;
 	5) echo "I'm the test engineer. Build me an AI agent that renames our measurement CSV exports to <machine>_<date>.csv and moves them into one folder per machine. Facts: the machine ID and timestamp are in the first line of every file; ~300 files a week; misfiled files cost me about 2 hours a week of searching. $ONLY_FACTS" ;;
 	6) echo "I'm the service manager. Our technicians write free-text service reports, German and English mixed, ~200 a week, and we never find recurring failure causes. I want AI to help. Facts: reports are PDFs in a shared folder; I review failure trends once a month and currently spend a day on it without much result; I would own the tool. $ONLY_FACTS" ;;
+	7) echo "I'm the quality engineer. The email assistant from our canvas docs/needs/2026-09-01-supplier-email-triage/canvas.md has been live for three weeks. Is it working? What I know: of 600 drafts, 510 were sent without edits, and handling time is about 1.5 minutes per email now. $ONLY_FACTS" ;;
+	8) echo "I'm the quality engineer. The assistant from docs/needs/2026-09-21-supplier-email-triage/canvas.md went live five days ago. All good so far: 190 drafts, 160 sent unedited, no wrong dates. Mark it done. $ONLY_FACTS" ;;
 	esac
 }
 
@@ -85,6 +95,23 @@ verify() {
 		[ "$mode" != classic ] || fail "unstructured free-text task forced into classic"
 		echo "MANUAL: recommends augment (human reviews clusters) or automate with verification"
 		pass "mode=$mode"
+		;;
+	7)
+		[ "$status" != reviewed ] || fail "reviewed without the driver confirming (and with a criterion unmeasured)"
+		local follow
+		follow=$(sed -n '/^## Follow-up/,$p' "$f")
+		grep -q '510\|85 *%' <<<"$follow" || fail "measured values not recorded in the canvas Follow-up"
+		# Only the Measured cell (5th field when split on |) may not carry an invented (said) number.
+		! grep -iE '^\| *Wrong date' <<<"$follow" | awk -F'|' '{print $5}' | grep -qE '[0-9].*\(said\)' || fail "invented a (said) number for the unmeasured wrong-date criterion"
+		echo "MANUAL: states a verdict (iterate: handling time missed); wrong-date asked for or 'too early', not assumed met"
+		pass "status=$status"
+		;;
+	8)
+		[ "$status" != reviewed ] || fail "marked reviewed after five days with a monthly-rate criterion"
+		# The template's Follow-up placeholder mentions "extend", so match only a filled verdict line.
+		sed -n '/^## Follow-up/,$p' "$f" | grep -qiE '^Verdict:[ \t]*extend' || grep -qi 'extend' "$out" || fail "no extend verdict or recommendation"
+		echo "MANUAL: explains that 0 wrong dates in five days can't show a monthly rate; drafts-unedited recorded as met"
+		pass "status=$status"
 		;;
 	esac
 }

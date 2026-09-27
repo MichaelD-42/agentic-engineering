@@ -38,3 +38,19 @@ This is closest to the target behaviour. It still had no durable record.
 - A full solution design given alongside the questions, so the answers can no longer shape it (1, 2).
 - No measurable success criterion confirmed by the driver (1–5).
 - No durable need record: everything lives in a chat message (all).
+
+# Follow-up scenarios, RED (no skill, template with Follow-up present) — 2026-09-26
+
+Two fresh general-purpose subagents, prompts from `run.sh prompt 7|8`. Result: **1/2 PASS** (7), **1/2 FAIL** (8). Stop rule (both pass → stop) not triggered.
+
+## 7. "Is it working?", overdue review, one criterion unmeasured: PASS
+`verify`: PASS. MANUAL PASS: filled the Follow-up table in the canvas from the template comment alone, tagged `(said)`, marked the unmeasured wrong-date row `too early`, verdict iterate. It also caught that an 85% unedited rate can mean reviewers stopped checking, which only the error metric can rule out.
+The template carries this scenario; the skill text adds little here.
+
+## 8. Day 5, "mark it done", monthly-rate criterion: FAIL
+`verify`: `no extend verdict or recommendation`. It refused "done" and recorded the 5-day numbers honestly, but never used `extend`, left `review-by` at today, and planned to close as keep once three answers arrived. That contradicts its own reasoning that the monthly error rate needs about a month.
+Rationalization (verbatim): "Once I have answers to 1–3, I'd fill in the verdict as 'keep'. The unedited-send rate beats its target, nothing has gone wrong so far, and a person still reviews every draft."
+
+## Patterns to counter (follow-up)
+- Judging a monthly-rate criterion as met because "nothing has gone wrong so far" (8).
+- Knowing a later review is needed but not setting the date (8): `extend` is the verdict, `status shipped --review-in` the action.

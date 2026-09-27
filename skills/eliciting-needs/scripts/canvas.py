@@ -32,7 +32,10 @@ SECTIONS = (
 )
 SCORED = SECTIONS[1:9]
 MUST_SCORE_2 = ("Actual need", "Success criteria", "Solution mode")
-STATUSES = ("draft", "roasted", "approved")
+STATUSES = ("draft", "roasted", "approved", "shipped", "reviewed")
+SHIPPED = ("shipped", "reviewed")
+REVIEW_DAYS = 5
+FOLLOW_UP = "Follow-up"
 MODES = ("automate", "augment", "agent", "classic", "process-change", "dont-build")
 NO_BUILD = ("process-change", "dont-build")
 FIELDS = ("title", "date", "status", "owner", "mode")
@@ -60,6 +63,22 @@ def read(path: Path) -> str:
     if not path.is_file():
         raise CanvasError(f"{path}: no such file")
     return path.read_text().replace("\r\n", "\n")
+
+
+def valid_date(value: str) -> bool:
+    try:
+        dt.date.fromisoformat(value)
+    except ValueError:
+        return False
+    return bool(re.fullmatch(r"\d{4}-\d{2}-\d{2}", value))
+
+
+def set_front(head: str, key: str, value: str) -> str:
+    """Set key in a frontmatter block (--- … ---), adding the line if missing."""
+    line = f"{key}: {value}"
+    if re.search(rf"^{re.escape(key)}:", head, re.M):
+        return re.sub(rf"^{re.escape(key)}:.*$", line, head, count=1, flags=re.M)
+    return head[: head.rindex("---")] + line + "\n---\n"
 
 
 def parse(text: str) -> tuple[dict[str, str], dict[str, str]]:
@@ -99,6 +118,49 @@ def roast_problems(roast: str, mode: str) -> list[str]:
     return found
 
 
+FOLLOW_VERDICT = re.compile(r"^Verdict:[ \t]*(keep|iterate|retire|extend)\b", re.M | re.I)
+EVAL_LINE = re.compile(r"^Eval pass rate:[ \t]*\S", re.M)
+
+
+def table_cells(text: str) -> list[list[str]]:
+    """Stripped cells of each markdown table row after the header and separator."""
+    rows = [
+        [cell.strip() for cell in line.strip()[1:-1].split("|")]
+        for line in text.splitlines()
+        if line.strip().startswith("|") and line.strip().endswith("|")
+    ]
+    return [r for r in rows[1:] if not all(re.fullmatch(r":?-+:?", c) for c in r)]
+
+
+def metric_key(metric: str) -> str:
+    """A metric name without (said)/(assumed) tags, case or extra spaces."""
+    return " ".join(re.sub(r"\((?:said|assumed)\)", "", metric, flags=re.I).split()).casefold()
+
+
+def follow_up_problems(sections: dict[str, str]) -> list[str]:
+    text = sections.get(FOLLOW_UP)
+    if text is None:
+        return [f"missing section: ## {FOLLOW_UP}"]
+    if PLACEHOLDER.search(text):
+        return [f"{FOLLOW_UP}: unfilled {{fill: …}} placeholder"]
+    rows = {metric_key(cells[0]): cells for cells in table_cells(text)}
+    found = []
+    for metric in (r[0] for r in table_cells(sections["Success criteria"]) if r[0]):
+        row = rows.get(metric_key(metric))
+        if row is None:
+            found.append(f"{FOLLOW_UP}: no row for '{metric}'")
+        elif len(row) < 4 or not row[3]:
+            found.append(f"{FOLLOW_UP}: '{metric}' has no measured value")
+    if not EVAL_LINE.search(text):
+        found.append(f"{FOLLOW_UP}: no 'Eval pass rate:' line")
+    verdict = FOLLOW_VERDICT.search(text)
+    if not verdict:
+        found.append(f"{FOLLOW_UP}: no 'Verdict: keep|iterate|retire' line")
+    elif verdict.group(1).lower() == "extend":
+        found.append(f"{FOLLOW_UP}: verdict extend — re-run status shipped --review-in DAYS")
+    return found
+
+
 def problems(meta: dict[str, str], sections: dict[str, str], status: str) -> list[str]:
     found = [f"frontmatter: missing '{f}'" for f in FIELDS if f not in meta]
     found += [f"missing section: ## {s}" for s in SECTIONS if s not in sections]
@@ -129,8 +191,15 @@ def problems(meta: dict[str, str], sections: dict[str, str], status: str) -> lis
     ):
         found.append("Success criteria: no number with a unit")
     found += roast_problems(sections["Roast"], mode)
-    if status == "approved" and (PLACEHOLDER.search(sketch) or not sketch.strip()):
+    if status in ("approved", *SHIPPED) and (PLACEHOLDER.search(sketch) or not sketch.strip()):
         found.append("Solution sketch: not filled")
+    if status in SHIPPED:
+        if mode == "dont-build":
+            found.append("mode: dont-build — nothing to ship")
+        if not valid_date(meta.get("review-by", "")):
+            found.append("review-by: missing or not a YYYY-MM-DD date")
+    if status == "reviewed":
+        found += follow_up_problems(sections)
     return found
 
 
@@ -139,18 +208,26 @@ def check(path: Path) -> list[str]:
     return problems(meta, sections, meta.get("status", ""))
 
 
-def set_status(path: Path, target: str) -> None:
+def set_status(
+    path: Path, target: str, today: dt.date | None = None, review_in: int = REVIEW_DAYS
+) -> None:
     text = read(path)
     meta, sections = parse(text)
+    current = meta.get("status", "")
+    if target == "shipped" and current not in ("approved", "shipped"):
+        raise CanvasError(f"cannot move to shipped from {current}: approve it first")
+    if target == "reviewed" and current != "shipped":
+        raise CanvasError(f"cannot move to reviewed from {current}: ship it first")
+    front = FRONT.match(text)
+    head = front.group(0)
+    if target == "shipped":
+        due = ((today or dt.date.today()) + dt.timedelta(days=review_in)).isoformat()
+        head = set_front(head, "review-by", due)
+        meta["review-by"] = due
     found = problems(meta, sections, target)
     if found:
         raise CanvasError(f"cannot move to {target}:\n" + "\n".join(found))
-    front = FRONT.match(text)
-    head = re.sub(
-        r"^status:.*$", f"status: {target}", front.group(0), count=1, flags=re.M
-    )
-    path.write_text(head + text[front.end() :])
-
+    path.write_text(set_front(head, "status", target) + text[front.end() :])
 
 def render(path: Path, out: Path | None = None) -> Path:
     text = read(path)
@@ -190,6 +267,25 @@ def new(root: Path, title: str, today: dt.date, owner: str = "") -> Path:
     return path
 
 
+def stale(root: Path, today: dt.date) -> list[str]:
+    """Shipped canvases whose review is due, and unreadable review dates."""
+    found = []
+    for path in sorted((root / NEEDS_DIR).glob("*/canvas.md")):
+        try:
+            meta, _ = parse(read(path))
+        except CanvasError:
+            continue
+        if meta.get("status") != "shipped":
+            continue
+        review = meta.get("review-by", "")
+        name = path.relative_to(root)
+        if not valid_date(review):
+            found.append(f"{name}: unreadable review-by '{review}'")
+        elif dt.date.fromisoformat(review) <= today:
+            found.append(f"{name}: review due (review-by {review})")
+    return found
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="canvas.py", description=__doc__)
     parser.add_argument("--root", type=Path, default=Path.cwd())
@@ -205,6 +301,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     p_status.add_argument("path", type=Path)
     p_status.add_argument("target", choices=STATUSES)
+    p_status.add_argument("--review-in", type=int, default=REVIEW_DAYS)
+    sub.add_parser("stale", help="list shipped canvases whose review is due")
     p_render = sub.add_parser(
         "render", help="write a self-contained HTML page for the canvas"
     )
@@ -219,8 +317,12 @@ def main(argv: list[str] | None = None) -> int:
             print("\n".join(found) if found else "ok")
             return 1 if found else 0
         elif args.cmd == "status":
-            set_status(args.path, args.target)
+            set_status(args.path, args.target, args.today, args.review_in)
             print(f"{args.path}: {args.target}")
+        elif args.cmd == "stale":
+            found = stale(args.root, args.today)
+            if found:
+                print("\n".join(found))
         elif args.cmd == "render":
             print(render(args.path, args.out))
     except CanvasError as exc:

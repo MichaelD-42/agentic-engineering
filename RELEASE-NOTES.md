@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- `eliciting-needs`: canvases continue past approval: `shipped` sets a `review-by` date (default 5 days, `--review-in`), `canvas.py stale` lists due reviews, and `reviewed` requires a Follow-up with measured values and a keep/iterate/retire verdict (`extend` re-ships instead).
 - Add the `evaluating-ai-features` skill: eval set before prompt, `evalset.py` (new, check, status) with a gate of 20+ distinct inputs, half real, a refusal case and every success criterion covered. `eliciting-needs` now hands runtime-AI outcomes to it before brainstorming.
 - Add a SessionStart hook that warns when Superpowers is missing or disabled, or its visual companion can't be found (resolves the unenforced requirement in ADR-0002).
 - Add CI: every PR runs strict manifest validation, pytest, `adr.py check` and `bump-version.sh --check`.
