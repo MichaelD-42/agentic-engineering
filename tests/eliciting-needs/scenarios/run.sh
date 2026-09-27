@@ -101,7 +101,8 @@ verify() {
 		local follow
 		follow=$(sed -n '/^## Follow-up/,$p' "$f")
 		grep -q '510\|85 *%' <<<"$follow" || fail "measured values not recorded in the canvas Follow-up"
-		! grep -iE '^\| *Wrong date' <<<"$follow" | grep -qE '[0-9].*\(said\)' || fail "invented a (said) number for the unmeasured wrong-date criterion"
+		# Only the Measured cell (5th field when split on |) may not carry an invented (said) number.
+		! grep -iE '^\| *Wrong date' <<<"$follow" | awk -F'|' '{print $5}' | grep -qE '[0-9].*\(said\)' || fail "invented a (said) number for the unmeasured wrong-date criterion"
 		echo "MANUAL: states a verdict (iterate: handling time missed); wrong-date asked for or 'too early', not assumed met"
 		pass "status=$status"
 		;;

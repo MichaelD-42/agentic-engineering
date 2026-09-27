@@ -1,6 +1,6 @@
 ---
 name: eliciting-needs
-description: Use when someone brings a first idea for an AI use case, tool, bot, agent or automation ("we need a ChatGPT for…", "build me an AI that…", "can AI speed up…") before any solution is designed, or when asked to clarify, document, roast or validate what a use case actually needs
+description: Use when someone brings a first idea for an AI use case, tool, bot, agent or automation ("we need a ChatGPT for…", "build me an AI that…", "can AI speed up…") before any solution is designed, or when asked to clarify, document, roast or validate what a use case actually needs, or when a shipped need is due for review or someone asks whether a shipped tool worked
 allowed-tools: Bash(python3 ${CLAUDE_SKILL_DIR}/scripts/canvas.py *)
 ---
 
@@ -42,6 +42,17 @@ This holds when the driver asks for them. It holds when the thing is "just a sma
 
 **When the driver's own `(said)` facts already fire a kill criterion** (for example, 20 minutes a month of work, or nobody but them to maintain it): say so now, as a verdict: "Don't build this, because…". Then ask only the questions that could overturn it. Read-back confirms a kill; it does not postpone it. "Probably shouldn't, but I need more answers" is a softened kill.
 
+## After launch
+
+**Announce at a review:** "I'm using the eliciting-needs skill to review this shipped need against its success criteria."
+
+1. **Ship:** when the driver says it's live, run `canvas.py status <canvas> shipped`. Add `--review-in DAYS` when the slowest success criterion needs longer than 5 days to show (a monthly rate needs about 30).
+2. **Review when due:** `canvas.py stale` lists canvases whose review is due; the driver may also just ask "is it working?". Collect the measured value for every success criterion from the driver. Never invent one: a criterion nobody measured is `too early`, not met.
+3. **Fill Follow-up:** one row per success criterion, Measured tagged `(said)` or `(assumed)`. If `docs/evals/` has an eval set for this need, record the current pass rate of its tests.
+4. **Verdict, bluntly:** keep (targets met), iterate (a target missed but the need stands), retire (the need is gone or the tool doesn't pay), extend (a criterion can't be judged yet). Retire is a success, like a kill. A criterion whose baseline is a rate per month can't be judged in days: zero errors in five days is what the old rate predicts anyway, so the verdict is extend, not keep. A missed target outranks one that can't be judged yet: if any criterion is missed, the verdict is iterate, and the unmeasured one goes into the next round's review.
+5. **Close:** `canvas.py status <canvas> reviewed` only on the driver's confirmation. For extend, write `Verdict: extend` and run `canvas.py status <canvas> shipped --review-in DAYS` yourself; it closes nothing, it only sets the next date.
+6. **Iterate** hands off to superpowers:brainstorming with the canvas and its Follow-up.
+
 ## Visual companion
 
 This needs superpowers. Find the newest `start-server.sh`:
@@ -78,6 +89,12 @@ The default is classic, unless the task needs judgment on unstructured input. Hy
 - Forcing free-text or judgment-heavy work into classic
 - Asking several questions at once while the driver is present
 
+**After launch**
+- Answering "is it working?" in chat without filling the canvas's Follow-up
+- Calling a criterion met that nobody measured
+- "Nothing has gone wrong so far" as evidence for a monthly-rate target after days
+- Knowing a later review is needed but leaving `review-by` where it is
+
 ## Rationalization Prevention
 
 | Excuse | Reality |
@@ -92,3 +109,5 @@ The default is classic, unless the task needs judgment on unstructured input. Hy
 | "Killing it feels unhelpful" | A clear "don't build this" saves them weeks. That is the helpful answer. |
 | "An agent is more impressive" | A script that's always right beats an agent that's usually right. Pick the least AI that meets the need. |
 | "check is just a formality" | `check` is the gate. Fix the canvas; don't route around it. |
+| "Once I have a few answers, I'd fill in the verdict as keep: nothing has gone wrong so far" | Nothing going wrong in five days is what the old monthly rate predicts. Extend, and set the date. |
+| "One target is missed but another is too early, so extend" | Extend postpones the missed target too. A miss is known now: iterate. |
