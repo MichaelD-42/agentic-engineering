@@ -132,16 +132,21 @@ def table_cells(text: str) -> list[list[str]]:
     return [r for r in rows[1:] if not all(re.fullmatch(r":?-+:?", c) for c in r)]
 
 
+def metric_key(metric: str) -> str:
+    """A metric name without (said)/(assumed) tags, case or extra spaces."""
+    return " ".join(re.sub(r"\((?:said|assumed)\)", "", metric, flags=re.I).split()).casefold()
+
+
 def follow_up_problems(sections: dict[str, str]) -> list[str]:
     text = sections.get(FOLLOW_UP)
     if text is None:
         return [f"missing section: ## {FOLLOW_UP}"]
     if PLACEHOLDER.search(text):
         return [f"{FOLLOW_UP}: unfilled {{fill: …}} placeholder"]
-    rows = {cells[0]: cells for cells in table_cells(text)}
+    rows = {metric_key(cells[0]): cells for cells in table_cells(text)}
     found = []
     for metric in (r[0] for r in table_cells(sections["Success criteria"]) if r[0]):
-        row = rows.get(metric)
+        row = rows.get(metric_key(metric))
         if row is None:
             found.append(f"{FOLLOW_UP}: no row for '{metric}'")
         elif len(row) < 4 or not row[3]:

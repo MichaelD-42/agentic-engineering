@@ -395,6 +395,14 @@ class ReviewTest(RepoCase):
         path = self.shipped(FOLLOW.replace("| Lead time |", "|   Lead time    |"))
         self.assertEqual(self.run_cli("status", str(path), "reviewed")[0], 0)
 
+    def test_review_metric_match_ignores_tags_and_case(self):
+        path = self.root / "canvas.md"
+        follow = FOLLOW.replace("| Lead time |", "| lead time |")
+        path.write_text(make_canvas(status="shipped", sketch="Plan.", review_by="2026-09-20",
+                                    success="| Lead time (said) | 3 days | 4 h |", extra={"Follow-up": follow}))
+        code, _, err = self.run_cli("status", str(path), "reviewed")
+        self.assertEqual(code, 0, err)
+
     def test_review_empty_measured(self):
         err = self.blocked(self.shipped(FOLLOW.replace("5 h (said)", "")))
         self.assertIn("Follow-up: 'Lead time' has no measured value", err)
