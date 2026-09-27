@@ -94,7 +94,7 @@ def parse(text: str) -> tuple[dict[str, str], dict[str, str]]:
     return meta, dict(zip(parts[1::2], parts[2::2]))
 
 
-def roast_problems(roast: str, mode: str) -> list[str]:
+def roast_problems(roast: str, mode: str, sections: dict[str, str]) -> list[str]:
     scores = {name: int(score) for name, score in SCORE_ROW.findall(roast)}
     found = [f"Roast: no score for {name}" for name in SCORED if name not in scores]
     verdict = VERDICT.search(roast)
@@ -114,6 +114,13 @@ def roast_problems(roast: str, mode: str) -> list[str]:
                 f"Roast: {n} must score 2 to pass"
                 for n in MUST_SCORE_2
                 if scores.get(n, 2) < 2
+            ]
+            # The rubric's 2 means (said) by the driver; an (assumed) claim caps a cell at 1.
+            found += [
+                f"Roast: {n} scored 2 but rests on (assumed) claims — score it 1, "
+                "or confirm the claim with the driver and tag it (said)"
+                for n in SCORED
+                if scores.get(n) == 2 and "(assumed)" in sections.get(n, "")
             ]
     return found
 
@@ -190,7 +197,7 @@ def problems(meta: dict[str, str], sections: dict[str, str], status: str) -> lis
         PLACEHOLDER.sub("", sections["Success criteria"])
     ):
         found.append("Success criteria: no number with a unit")
-    found += roast_problems(sections["Roast"], mode)
+    found += roast_problems(sections["Roast"], mode, sections)
     if status in ("approved", *SHIPPED) and (PLACEHOLDER.search(sketch) or not sketch.strip()):
         found.append("Solution sketch: not filled")
     if status in SHIPPED:
