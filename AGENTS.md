@@ -6,7 +6,7 @@ This repo is a Claude Code plugin. The repo root is the plugin; `.claude-plugin/
 
 - `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`: manifests. Versions must match; never edit them by hand, use `scripts/bump-version.sh`.
 - `skills/<skill-name>/SKILL.md`: one directory per skill, supporting files alongside `SKILL.md`.
-- `docs/adr/`: decisions, managed with the `recording-decisions` skill (`adr.py`). Never edit an accepted ADR's body; supersede it.
+- `docs/adr/`: decisions, managed with the `recording-decisions` skill (`adr.py`). Fix an accepted ADR's wording freely; change what it decided only by superseding it.
 - `docs/superpowers/specs/`, `docs/superpowers/plans/`: design specs and implementation plans.
 
 ## Superpowers dependency
