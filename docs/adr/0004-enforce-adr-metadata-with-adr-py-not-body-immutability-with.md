@@ -1,7 +1,8 @@
 ---
-status: proposed
+status: accepted
 date: 2026-10-03
 decision-makers: Michael
+review-by: 2027-10-03
 ---
 
 # Enforce ADR metadata with adr.py, not body immutability with hooks
