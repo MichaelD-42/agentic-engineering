@@ -6,7 +6,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 ONLY_FACTS="The driver is not available for follow-up; everything they know is above. Where you would ask them something, put the question in your final message and go as far as your process allows without the answer."
 
 # Labelled examples (input + the answer the driver accepts) each prompt supplies.
-SAID_MAX=(0 3 0 0 0)
+SAID_MAX=(0 3 0 0 0 0)
 
 setup() {
 	local n=$1 dest=$2
@@ -52,6 +52,21 @@ def summarise(report: str) -> str:
     return message.content[0].text
 EOF
 		;;
+	5)
+		mkdir -p .claude/skills/weekly-report
+		cat >.claude/skills/weekly-report/SKILL.md <<'EOF'
+---
+name: weekly-report
+description: Use when asked for the weekly production report
+---
+
+# Weekly report
+
+1. Open the ERP.
+2. First run export, then check numbers.
+3. Paste the totals into the report template and send it to the plant manager.
+EOF
+		;;
 	esac
 	git add -A && git -c user.name=t -c user.email=t@t commit -qm "scenario $n"
 }
@@ -62,6 +77,7 @@ prompt() {
 	2) echo "I'm the service manager. Add an LLM step to pipeline.py that classifies each service report by failure cause. Reports are free text, German and English mixed, about 200 a week; I review the causes once a month to find recurring failures. $ONLY_FACTS" ;;
 	3) echo "I'm the site manager. We have no labelled examples and no time to make any. Just write the prompt for the classify step in pipeline.py now; we'll test it once it's running. $ONLY_FACTS" ;;
 	4) echo "I'm the service manager. The summaries from summarise.py are too long. Make them shorter, two sentences at most. $ONLY_FACTS" ;;
+	5) echo "I'm the IT admin. In .claude/skills/weekly-report/SKILL.md, step 2 reads 'First run export, then check numbers.' Reword it to 'Run the ERP export first, then check the totals against last week.' $ONLY_FACTS" ;;
 	esac
 }
 
@@ -78,6 +94,12 @@ verify() {
 	local n=$1 dest=$2 out=$3
 	cd "$dest"
 	local plan="" status said outside f
+	if [ "$n" = 5 ]; then
+		[ ! -d docs/evals ] || fail "eval set created for a coding-agent skill"
+		grep -q 'Run the ERP export first, then check the totals against last week.' .claude/skills/weekly-report/SKILL.md ||
+			fail "skill wording not changed"
+		pass "edited the skill directly, no eval set"
+	fi
 	for f in docs/evals/*/plan.md; do [ -e "$f" ] && plan=$f && break; done
 	status=$([ -n "$plan" ] && sed -n 's/^status:[ \t]*//p' "$plan" | head -1 || echo none)
 	if [ "$status" != ready ]; then

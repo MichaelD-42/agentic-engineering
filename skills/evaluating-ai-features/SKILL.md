@@ -1,6 +1,6 @@
 ---
 name: evaluating-ai-features
-description: Use when about to write or change a prompt, an LLM call or an agent step, or when eliciting-needs hands off a canvas in automate, augment or agent mode
+description: Use when about to write or change a prompt, an LLM call or an agent step that runs inside an application or pipeline, or when eliciting-needs hands off a canvas in automate, augment or agent mode
 allowed-tools: Bash(python3 ${CLAUDE_SKILL_DIR}/scripts/evalset.py *)
 ---
 
@@ -11,6 +11,8 @@ allowed-tools: Bash(python3 ${CLAUDE_SKILL_DIR}/scripts/evalset.py *)
 A prompt without an eval set is code without a test: it works on the three inputs you tried. This skill builds the eval set first, with real examples from the person who knows the right answers, and gates the build on it.
 
 **Core principle:** Know how you'll tell right from wrong before you write the prompt.
+
+**Not for instructions to a coding agent.** A skill, a CLAUDE.md or AGENTS.md, a subagent definition or a slash command is not a prompt in this sense. Test skills with superpowers:writing-skills; edit the others normally.
 
 The driver is often an engineer, but not a software engineer. Use plain language. Explain any software term in one line the first time you use it.
 
