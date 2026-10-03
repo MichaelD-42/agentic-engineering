@@ -5,6 +5,7 @@ import re
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
@@ -354,6 +355,16 @@ class RenderTest(RepoCase):
         code, out, _ = self.run_cli("render", str(path), "--out", str(target))
         self.assertEqual((code, out.strip()), (0, str(target)))
         self.assertTrue(target.is_file())
+
+    def test_cli_render_open_uses_the_default_browser(self):
+        path = canvas.new(self.root, "X", TODAY)
+        with mock.patch.object(canvas.webbrowser, "open") as browser:
+            code, _, _ = self.run_cli("render", str(path), "--open")
+            self.assertEqual(code, 0)
+            browser.assert_called_once_with(path.with_suffix(".html").resolve().as_uri())
+        with mock.patch.object(canvas.webbrowser, "open") as browser:
+            self.run_cli("render", str(path))
+            browser.assert_not_called()
 
     def test_render_escapes_raw_html_blocks(self):
         page = canvas.render(canvas.new(self.root, "X", TODAY)).read_text()

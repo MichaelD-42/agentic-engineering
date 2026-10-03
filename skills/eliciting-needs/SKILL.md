@@ -61,7 +61,7 @@ This needs superpowers. Find the newest `start-server.sh`:
 ls -d ~/.claude/plugins/cache/*/superpowers/*/skills/brainstorming/scripts/start-server.sh | sort -V | tail -1
 ```
 
-Offer it once, as its own message. On a yes, start it with `--project-dir <repo> --open` and follow that skill's `visual-companion.md` for the loop. After every canvas change, run `canvas.py render <canvas> --out <screen_dir>/canvas-<n>.html` with a new `n` each time, since the companion shows the newest file. If superpowers is missing or the offer is declined, run `canvas.py render <canvas>` and `xdg-open` the result once; the driver reloads it themselves.
+Offer it once, as its own message. On a yes, start it with `--project-dir <repo> --open` and follow that skill's `visual-companion.md` for the loop. After every canvas change, run `canvas.py render <canvas> --out <screen_dir>/canvas-<n>.html` with a new `n` each time, since the companion shows the newest file. If superpowers is missing or the offer is declined, run `canvas.py render <canvas> --open` once; the driver reloads the page themselves after each change.
 
 ## Solution modes
 

@@ -3,7 +3,7 @@
 Copy to `docs/stack.md` (project) or `~/.claude/stack.md` (personal) and edit. Sketches prefer these; any deviation needs a reason.
 
 ## Runtime AI
-- LLM: Claude API — `claude-sonnet-5` by default, `claude-haiku-4-5-20251001` for high volume/low stakes
+- LLM: Claude API — the latest Sonnet by default, the latest Haiku for high volume/low stakes. Look up the current model IDs in the Claude docs; don't copy them from here.
 - Agents: Claude Agent SDK (Python)
 - Workflow and integrations: n8n
 - Evals: a golden-set CSV plus a pytest check run before every prompt change
