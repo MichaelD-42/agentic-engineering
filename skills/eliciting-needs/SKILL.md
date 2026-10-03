@@ -31,7 +31,7 @@ This holds when the driver asks for them. It holds when the thing is "just a sma
 ## Checklist
 
 1. **Capture:** Quote the idea verbatim. Run `python3 ${CLAUDE_SKILL_DIR}/scripts/canvas.py new "<short title>" --owner "<driver, if they will own it>"`. Offer the visual companion (below).
-2. **Elicit:** Pick the weakest or emptiest cell and ask **one** plain-language question, using a probe from `references/probes.md`. Write the answer into the canvas, tagged `(said)` or `(assumed)`, and re-render. Repeat until every cell up to Open questions is filled. Never promote `(assumed)` to `(said)` without the driver confirming. In Mermaid blocks, keep every label in double quotes with the tag inside, like `A["Mail arrives (said)"]`; an unquoted `(` breaks the diagram.
+2. **Elicit:** Pick the weakest or emptiest cell and ask **one** plain-language question, using a probe from `references/probes.md`. Write the answer into the canvas, tagged `(said)` or `(assumed)`, and re-render. Repeat until every cell up to Open questions is filled; `canvas.py check <canvas>` lists what is still missing. Never promote `(assumed)` to `(said)` without the driver confirming. In Mermaid blocks, keep every label in double quotes with the tag inside, like `A["Mail arrives (said)"]`; an unquoted `(` breaks the diagram.
 3. **Read back:** Read the Actual need sentence and the Success criteria back to the driver, and apply their corrections. This is the validation step. Don't skip it.
 4. **Classify and roast:** Choose the mode with `references/ai-fit.md`, then score every cell with `references/roast-rubric.md` and write the Roast section. Present it bluntly. A 0 sends you back to step 2. A `reroute` means change the mode and roast again. A `kill` means recommend `dont-build` or `process-change`, which is a successful outcome and should be presented as one. Then run `canvas.py status <canvas> roasted`. Its output is the gate.
 5. **Sketch:** Write 1–2 options in the chosen mode, using the stack profile (`docs/stack.md` → `~/.claude/stack.md` → `${CLAUDE_SKILL_DIR}/templates/stack-profile.md`), and say which profile you used. For each option give the tools, the build and run cost (per-run LLM cost for runtime modes), the risks, the non-goals, and any deviation from the profile with its reason. A runtime-AI option always names the classic alternative it beat and why.
@@ -61,7 +61,7 @@ This needs superpowers. Find the newest `start-server.sh`:
 ls -d ~/.claude/plugins/cache/*/superpowers/*/skills/brainstorming/scripts/start-server.sh | sort -V | tail -1
 ```
 
-Offer it once, as its own message. On a yes, start it with `--project-dir <repo> --open` and follow that skill's `visual-companion.md` for the loop. After every canvas change, run `canvas.py render <canvas> --out <screen_dir>/canvas-<n>.html` with a new `n` each time, since the companion shows the newest file. If superpowers is missing or the offer is declined, run `canvas.py render <canvas>` and `xdg-open` the result once; the driver reloads it themselves.
+Offer it once, as its own message. On a yes, start it with `--project-dir <repo> --open` and follow that skill's `visual-companion.md` for the loop. After every canvas change, run `canvas.py render <canvas> --out <screen_dir>/canvas-<n>.html` with a new `n` each time, since the companion shows the newest file. If superpowers is missing or the offer is declined, run `canvas.py render <canvas> --open` once; the driver reloads the page themselves after each change.
 
 ## Solution modes
 

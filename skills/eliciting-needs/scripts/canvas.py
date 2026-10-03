@@ -10,6 +10,7 @@ import json
 import re
 import sys
 import unicodedata
+import webbrowser
 from pathlib import Path
 
 SKILL_DIR = Path(__file__).resolve().parent.parent
@@ -162,7 +163,7 @@ def follow_up_problems(sections: dict[str, str]) -> list[str]:
         found.append(f"{FOLLOW_UP}: no 'Eval pass rate:' line")
     verdict = FOLLOW_VERDICT.search(text)
     if not verdict:
-        found.append(f"{FOLLOW_UP}: no 'Verdict: keep|iterate|retire' line")
+        found.append(f"{FOLLOW_UP}: no 'Verdict: keep|iterate|retire|extend' line")
     elif verdict.group(1).lower() == "extend":
         found.append(f"{FOLLOW_UP}: verdict extend — re-run status shipped --review-in DAYS")
     return found
@@ -315,6 +316,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     p_render.add_argument("path", type=Path)
     p_render.add_argument("--out", type=Path)
+    p_render.add_argument("--open", action="store_true", help="open the page in the default browser")
     args = parser.parse_args(argv)
     try:
         if args.cmd == "new":
@@ -331,7 +333,10 @@ def main(argv: list[str] | None = None) -> int:
             if found:
                 print("\n".join(found))
         elif args.cmd == "render":
-            print(render(args.path, args.out))
+            out = render(args.path, args.out)
+            print(out)
+            if args.open:
+                webbrowser.open(out.resolve().as_uri())
     except CanvasError as exc:
         print(f"canvas.py: {exc}", file=sys.stderr)
         return 1

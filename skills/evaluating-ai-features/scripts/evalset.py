@@ -187,6 +187,8 @@ def check(folder: Path) -> list[str]:
         found.append(f"said: {said} of {inputs} distinct inputs are real examples, need at least half")
     if not any(case.get("kind") == "refuse" for case in cases):
         found.append("refuse: no refuse case (an input the step must decline or flag)")
+    if found and meta.get("status") == "ready":
+        found.append(f"plan.md: status is ready but the set no longer passes; fix it or run: evalset.py status {folder} draft")
     return found
 
 

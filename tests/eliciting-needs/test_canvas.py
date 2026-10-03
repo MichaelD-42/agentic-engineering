@@ -5,6 +5,7 @@ import re
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
@@ -355,6 +356,16 @@ class RenderTest(RepoCase):
         self.assertEqual((code, out.strip()), (0, str(target)))
         self.assertTrue(target.is_file())
 
+    def test_cli_render_open_uses_the_default_browser(self):
+        path = canvas.new(self.root, "X", TODAY)
+        with mock.patch.object(canvas.webbrowser, "open") as browser:
+            code, _, _ = self.run_cli("render", str(path), "--open")
+            self.assertEqual(code, 0)
+            browser.assert_called_once_with(path.with_suffix(".html").resolve().as_uri())
+        with mock.patch.object(canvas.webbrowser, "open") as browser:
+            self.run_cli("render", str(path))
+            browser.assert_not_called()
+
     def test_render_escapes_raw_html_blocks(self):
         page = canvas.render(canvas.new(self.root, "X", TODAY)).read_text()
         self.assertIn("html(token)", page)
@@ -516,7 +527,7 @@ class ReviewTest(RepoCase):
 
     def test_review_missing_verdict(self):
         err = self.blocked(self.shipped(FOLLOW.replace("Verdict: iterate\n", "")))
-        self.assertIn("Follow-up: no 'Verdict: keep|iterate|retire' line", err)
+        self.assertIn("Follow-up: no 'Verdict: keep|iterate|retire|extend' line", err)
 
     def test_review_extend_refused(self):
         err = self.blocked(

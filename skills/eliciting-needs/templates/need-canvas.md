@@ -34,7 +34,7 @@ Pain points: {fill: which steps hurt, and how}
 
 ## Cost of the problem
 
-{fill: frequency × time / money / error rate, with confidence low|medium|high}
+{fill: frequency × time / money / error rate, as a realistic and an optimistic figure, each with confidence low|medium|high}
 
 ## Success criteria
 

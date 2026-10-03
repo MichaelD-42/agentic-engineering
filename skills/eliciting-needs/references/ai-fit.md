@@ -11,6 +11,6 @@ Work top to bottom and take the first mode that fits.
 
 Record the deciding factors in the canvas: structured input?, judgment needed?, error tolerance, output verifiable?, volume/frequency, data available?, labelled examples to test against?, cost per run.
 
-For any runtime-AI mode, "data available" means more than access. You need a few dozen real cases with the right answer known, so the output can be tested before anyone relies on it. If those examples can't be produced, say so; it counts against augment, automate and agent.
+For any runtime-AI mode, "data available" means more than access. You need at least 20 example inputs with the right answer known, at least half of them real cases (the gate in evaluating-ai-features), so the output can be tested before anyone relies on it. If those examples can't be produced, say so; it counts against augment, automate and agent.
 
 Hybrid: the primary mode is where the value is. Mark the LLM steps in the to-be flow.

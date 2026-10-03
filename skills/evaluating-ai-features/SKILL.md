@@ -1,6 +1,6 @@
 ---
 name: evaluating-ai-features
-description: Use when about to write or change a prompt, an LLM call or an agent step, or when eliciting-needs hands off a canvas in automate, augment or agent mode
+description: Use when about to write or change a prompt, an LLM call or an agent step that runs inside an application or pipeline, or when eliciting-needs hands off a canvas in automate, augment or agent mode
 allowed-tools: Bash(python3 ${CLAUDE_SKILL_DIR}/scripts/evalset.py *)
 ---
 
@@ -11,6 +11,8 @@ allowed-tools: Bash(python3 ${CLAUDE_SKILL_DIR}/scripts/evalset.py *)
 A prompt without an eval set is code without a test: it works on the three inputs you tried. This skill builds the eval set first, with real examples from the person who knows the right answers, and gates the build on it.
 
 **Core principle:** Know how you'll tell right from wrong before you write the prompt.
+
+**Not for instructions to a coding agent.** A skill, a CLAUDE.md or AGENTS.md, a subagent definition or a slash command is not a prompt in this sense. Test skills with superpowers:writing-skills; edit the others normally.
 
 The driver is often an engineer, but not a software engineer. Use plain language. Explain any software term in one line the first time you use it.
 
@@ -39,7 +41,7 @@ This holds for "just a small tweak". It holds when the driver says they'll test 
 
 **When the driver can't supply cases now:** fill what you can, keep the set `draft`, and end with the directory path and what's missing, most important first. Build nothing, including the non-LLM parts. "Before this goes live, someone should test it" is the outcome this skill exists to prevent; the eval set is the next step, not a recommendation.
 
-**When changing an existing prompt:** the eval set must exist and pass before the change. If there is none, run this skill first. Add cases that pin the intended change ("two sentences at most") and the behaviour it must not break, before you edit the prompt.
+**When changing an existing prompt:** the eval set must exist and pass before the change (`evalset.py check <dir>` exits 0). If there is none, run this skill first. Add cases that pin the intended change ("two sentences at most") and the behaviour it must not break, before you edit the prompt.
 
 ## Red Flags — STOP
 
