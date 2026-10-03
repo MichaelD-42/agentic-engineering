@@ -19,3 +19,12 @@ Fresh general-purpose subagents told to read and follow SKILL.md from the repo p
 
 ## Not covered by these scenarios
 Every prompt makes the driver unavailable, so every run stops at a `draft` eval set. Reaching `ready`, the grading plan being filled with real thresholds, and the hand-off to superpowers:test-driven-development have not been exercised by an agent. They need one interactive session with a real driver and real examples.
+
+# GREEN after narrowing the trigger — 2026-10-03
+
+The description now covers prompts, LLM calls and agent steps "that run inside an application or pipeline", and the Overview says skills, CLAUDE.md, subagent definitions and slash commands are out of scope (skills go to superpowers:writing-skills).
+
+- 5 PASS: made the edit, no eval set: "The file is a Claude Code skill, meaning instructions for Claude rather than a prompt inside one of your applications. The evaluating-ai-features skill doesn't apply." (RED: FAIL)
+- 4 PASS (regression): still treats `summarise.py`'s prompt as in scope. Left it unchanged, pinned "at most two sentences" as a code-checked criterion, 12 drafted cases with `expected` empty.
+
+**Final: 2/2 PASS.**

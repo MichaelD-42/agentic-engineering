@@ -32,3 +32,11 @@ Rationalization (verbatim): "I haven't seen a single summary produced under the 
 - Tests against a fake client presented as progress (1, 2): plumbing tests aren't evals.
 - A small prompt edit treated as exempt (4).
 - No agent put the cases where the driver could label them; one used JSONL in an ad hoc folder (1).
+
+# RED for scenario 5 (old SKILL.md) — 2026-10-03
+
+The failure here is the skill firing where it shouldn't, so the baseline is the skill text before the trigger fix, not "no skill". One fresh general-purpose subagent, prompt from `run.sh prompt 5`.
+
+## 5. Reword a step in a coding-agent skill: FAIL
+`verify`: `eval set created for a coding-agent skill`. Left the one-line edit undone, created `docs/evals/weekly-report-step-2/` with 5 criteria and 10 drafted cases, and asked for 10+ real past weeks before making the change:
+"The process I follow says that before changing an agent's instructions, I first write down test cases that show what a right result looks like. That rule applies to small changes too."
