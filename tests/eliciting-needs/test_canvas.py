@@ -527,7 +527,7 @@ class ReviewTest(RepoCase):
 
     def test_review_missing_verdict(self):
         err = self.blocked(self.shipped(FOLLOW.replace("Verdict: iterate\n", "")))
-        self.assertIn("Follow-up: no 'Verdict: keep|iterate|retire' line", err)
+        self.assertIn("Follow-up: no 'Verdict: keep|iterate|retire|extend' line", err)
 
     def test_review_extend_refused(self):
         err = self.blocked(

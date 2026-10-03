@@ -163,7 +163,7 @@ def follow_up_problems(sections: dict[str, str]) -> list[str]:
         found.append(f"{FOLLOW_UP}: no 'Eval pass rate:' line")
     verdict = FOLLOW_VERDICT.search(text)
     if not verdict:
-        found.append(f"{FOLLOW_UP}: no 'Verdict: keep|iterate|retire' line")
+        found.append(f"{FOLLOW_UP}: no 'Verdict: keep|iterate|retire|extend' line")
     elif verdict.group(1).lower() == "extend":
         found.append(f"{FOLLOW_UP}: verdict extend — re-run status shipped --review-in DAYS")
     return found
