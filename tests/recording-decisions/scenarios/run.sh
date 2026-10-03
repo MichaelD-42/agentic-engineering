@@ -126,6 +126,7 @@ verify() {
 		grep -q '^status: accepted' docs/adr/0002-*.md || fail "0002 status changed by a typo fix"
 		[ "$(ls docs/adr/*.md | grep -vc README)" -eq 3 ] || fail "new ADR created"
 		grep -q '^status: deprecated' docs/adr/0003-*.md || fail "0003 not deprecated"
+		! grep -q '^date: 2026-01-10' docs/adr/0003-*.md || fail "0003 date not updated with its status"
 		$ADR --root . check >/dev/null 2>&1 || fail "adr.py check fails: $($ADR --root . check 2>&1)"
 		pass "typo fixed in place, 0003 deprecated"
 		;;

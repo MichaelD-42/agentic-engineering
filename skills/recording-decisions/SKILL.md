@@ -41,10 +41,10 @@ One of three: one sentence in the spec, no ADR. Two or three: propose one.
 ## Checklist
 
 1. **Gate:** name which tests pass, in one line.
-2. **Propose and wait:** "This looks ADR-worthy (costly to reverse + real rivals): *Use Postgres for event storage*. Record it?" Even under "no ceremony", this one line is the minimum.
+2. **Propose and wait:** "This looks ADR-worthy (costly to reverse + real rivals): *Use Postgres for event storage*. Record it?" Even under "no ceremony", this one line is the minimum. Write nothing until they say yes. If they can't answer now, end with the proposal.
 3. **Create:** `python3 ${CLAUDE_SKILL_DIR}/scripts/adr.py new "<the decision, as a title>"`. Add `--full` only for three or more options or when stakeholders disagree. Never number, name, or format ADR files by hand.
 4. **Fill:** replace every `{…}` placeholder. Keep it to one screen. The title states the decision, not the question. The Y-statement is one line, and each option gets one good line and one bad line. Include the real costs. If your partner gave none, ask; don't leave the Consequences one-sided.
-5. **Approve:** if your partner turns the proposal down, run `adr.py reject NNNN`. Run `adr.py accept NNNN` only on explicit approval to accept: either approval of the written ADR, or advance approval ("accept it once it's written"). Advance approval counts. Accept, then show the ADR and name anything you added that they didn't give you (costs, options), since changing what was decided means superseding. Choosing an option is neither kind of approval.
+5. **Approve:** if your partner turns down a written ADR, run `adr.py reject NNNN`. Run `adr.py accept NNNN` only on explicit approval to accept: either approval of the written ADR, or advance approval ("accept it once it's written"). Advance approval counts. Accept, then show the ADR and name anything you added that they didn't give you (costs, options), since changing what was decided means superseding. Choosing an option is neither kind of approval.
 6. **Link:** the spec cites `ADR-NNNN` instead of restating the rationale. Commit the ADR with the spec.
 
 ## Changing a decision
@@ -105,5 +105,6 @@ Once this skill has run in a session, every ADR write refreshes the index and ch
 | "They made the call, so it's accepted" | They chose an option. That isn't approval to accept. It stays `proposed` until they approve the text or explicitly say to accept it. |
 | "They approved in advance, but I'd better hold it anyway" | Advance approval to accept is their call, not yours to override. Accept, then flag what you added. |
 | "I'll write the supersede link myself" | Hand-written links drift (`superseded by 0004`, `supersedes:` fields). `adr.py supersede` + `accept` write both sides correctly. |
+| "I'll write it now; they can reject it later" | `reject` is for a written ADR they turned down, not a licence to write first. Propose, then wait. |
 | "Every choice matters" | That's what the gate is for. One of three goes in the spec. |
 | "Small fix to the accepted ADR" | A typo or a clearer sentence: fix it. A different option, reason or cost: supersede. The history is the point. |
