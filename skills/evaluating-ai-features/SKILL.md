@@ -41,7 +41,7 @@ This holds for "just a small tweak". It holds when the driver says they'll test 
 
 **When the driver can't supply cases now:** fill what you can, keep the set `draft`, and end with the directory path and what's missing, most important first. Build nothing, including the non-LLM parts. "Before this goes live, someone should test it" is the outcome this skill exists to prevent; the eval set is the next step, not a recommendation.
 
-**When changing an existing prompt:** the eval set must exist and pass before the change. If there is none, run this skill first. Add cases that pin the intended change ("two sentences at most") and the behaviour it must not break, before you edit the prompt.
+**When changing an existing prompt:** the eval set must exist and pass before the change (`evalset.py check <dir>` exits 0). If there is none, run this skill first. Add cases that pin the intended change ("two sentences at most") and the behaviour it must not break, before you edit the prompt.
 
 ## Red Flags — STOP
 

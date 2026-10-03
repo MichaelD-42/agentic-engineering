@@ -264,6 +264,13 @@ class StatusTest(RepoCase):
         after = (folder / "plan.md").read_text()
         self.assertEqual(after, before.replace("status: draft", "status: ready", 1))
 
+    def test_check_flags_a_ready_set_that_no_longer_passes(self):
+        folder = write_valid(self.root / "e")
+        evalset.set_status(folder, "ready")
+        self.assertEqual(evalset.check(folder), [])
+        rewrite_cases(folder, lambda h, d: d[0].__setitem__(5, ""))
+        self.assertIn("status is ready but the set no longer passes", "\n".join(evalset.check(folder)))
+
     def test_draft_always_allowed(self):
         folder = write_valid(self.root / "e", refuse=0)
         evalset.set_status(folder, "draft")
