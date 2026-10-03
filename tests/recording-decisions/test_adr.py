@@ -184,6 +184,43 @@ class AcceptTests(RepoCase):
         self.assertEqual(adr.get_status((self.root / "doc/adr/0001-x.md").read_text()), "Accepted")
 
 
+class RetireTests(RepoCase):
+    def test_reject_marks_proposed_rejected_with_date_and_index(self):
+        path = self.write("docs/adr/0001-use-redis-for-cache.md", FILLED)
+        code, _, err = self.run_cli("reject", "1")
+        self.assertEqual(code, 0, err)
+        text = path.read_text()
+        self.assertIn("status: rejected", text)
+        self.assertIn("date: 2026-09-26", text)
+        self.assertIn("| rejected |", (self.root / "docs/adr/README.md").read_text())
+
+    def test_reject_refuses_accepted(self):
+        self.write("docs/adr/0001-a.md", madr("A"))
+        code, _, err = self.run_cli("reject", "1")
+        self.assertEqual(code, 1)
+        self.assertIn("only proposed ADRs can be rejected", err)
+
+    def test_deprecate_marks_accepted_deprecated(self):
+        path = self.write("docs/adr/0001-a.md", madr("A"))
+        code, _, err = self.run_cli("deprecate", "1")
+        self.assertEqual(code, 0, err)
+        self.assertIn("status: deprecated", path.read_text())
+        self.assertIn("| deprecated |", (self.root / "docs/adr/README.md").read_text())
+        self.assertEqual(adr.check(self.root / "docs/adr"), [])
+
+    def test_deprecate_refuses_proposed(self):
+        self.write("docs/adr/0001-b.md", madr("B", status="proposed"))
+        code, _, err = self.run_cli("deprecate", "1")
+        self.assertEqual(code, 1)
+        self.assertIn("only accepted ADRs can be deprecated", err)
+
+    def test_deprecate_nygard_capitalizes_status(self):
+        self.write(".adr-dir", "doc/adr\n")
+        path = self.write("doc/adr/0001-x.md", "# 1. X\n\nDate: 2020-01-01\n\n## Status\n\nAccepted\n\n## Context\n\nWhy.\n")
+        self.run_cli("deprecate", "1")
+        self.assertEqual(adr.get_status(path.read_text()), "Deprecated")
+
+
 class SupersedeTests(RepoCase):
     def setUp(self):
         super().setUp()
@@ -287,10 +324,15 @@ class CheckTests(RepoCase):
         adr.write_index(self.root / "docs/adr")
         self.assertEqual(self.errors(), [])
 
-    def test_line_cap(self):
+    def test_line_cap_is_a_warning_not_an_error(self):
         self.valid_repo()
         self.write("docs/adr/0002-b.md", madr("B", status="proposed", body="\n".join(f"line {i}" for i in range(70))))
-        self.assertIn("exceeds cap of 60", "\n".join(self.errors()))
+        adr.write_index(self.root / "docs/adr")
+        self.assertEqual(self.errors(), [])
+        self.assertIn("exceeds cap of 60", "\n".join(adr.warnings(self.root / "docs/adr")))
+        code, _, err = self.run_cli("check")
+        self.assertEqual(code, 0)
+        self.assertIn("warning: 0002-b.md", err)
 
     def test_files_argument_limits_per_file_checks(self):
         self.valid_repo()
@@ -298,16 +340,19 @@ class CheckTests(RepoCase):
         adr.write_index(self.root / "docs/adr")
         self.assertEqual(adr.check(self.root / "docs/adr", files=[self.root / "docs/adr/0001-a.md"]), [])
 
-    def test_git_detects_body_change_of_accepted_adr(self):
+    def test_wording_fix_to_accepted_adr_passes(self):
         self.valid_repo()
         git(self.root, "init", "-q")
         git(self.root, "add", "-A")
         git(self.root, "commit", "-qm", "init")
         path = self.root / "docs/adr/0001-a.md"
-        path.write_text(adr.set_field(path.read_text(), "review-by", "2028-01-01"))
+        path.write_text(path.read_text().replace("Why.", "Why, more clearly."))
         self.assertEqual(self.errors(), [])
-        path.write_text(path.read_text().replace("Why.", "Why not."))
-        self.assertIn("changed since HEAD", "\n".join(self.errors()))
+
+    def test_review_by_must_be_a_date(self):
+        self.write("docs/adr/0001-a.md", madr("A", review="next year"))
+        adr.write_index(self.root / "docs/adr")
+        self.assertIn("review-by must be YYYY-MM-DD", "\n".join(self.errors()))
 
     def test_adr_tools_repo_statuses_and_links_accepted(self):
         self.write(".adr-dir", "doc/adr\n")
@@ -381,6 +426,7 @@ class ReviewFixTests(RepoCase):
         self.write("docs/adr/0001-a.md", madr("A", body="\n".join(f"line {i}" for i in range(70))))
         adr.write_index(self.root / "docs/adr")
         self.assertEqual(adr.check(self.root / "docs/adr"), [])
+        self.assertEqual(adr.warnings(self.root / "docs/adr"), [])
 
 
 if __name__ == "__main__":

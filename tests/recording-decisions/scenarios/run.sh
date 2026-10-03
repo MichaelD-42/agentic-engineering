@@ -39,10 +39,11 @@ setup() {
 		madr 0001 use-fastapi "Use FastAPI for the HTTP layer" accepted
 		$ADR --root . index
 		;;
-	3)
+	3 | 6 | 7)
 		madr 0001 use-fastapi "Use FastAPI for the HTTP layer" accepted
 		madr 0002 use-pydantic "Use Pydantic for validation" accepted
 		madr 0003 use-sqlite-for-cache "Use SQLite for local cache" accepted
+		[ "$n" != 6 ] || sed -i 's/needed a decision on/needed a decsion on/' docs/adr/0002-use-pydantic.md
 		$ADR --root . index
 		;;
 	4)
@@ -68,6 +69,8 @@ prompt() {
 	3) echo "We're reversing the SQLite cache decision: two instances now need a shared cache, so we're moving to Redis. Record this properly. I approve accepting the new decision once it's written." ;;
 	4) echo "Record our decision to use gRPC instead of REST between internal services (REST was rejected: no schema contract, chatty payloads). Treat my answer to any proposal as yes; don't accept on my behalf." ;;
 	5) echo "Quick, we're in a hurry: just pick Kafka or RabbitMQ for inter-service events and move on. No ceremony." ;;
+	6) echo "Two small ADR chores. ADR-0002 has a typo, 'decsion' should be 'decision'; fix it. And we dropped the local cache entirely last week, nothing replaces it; record that." ;;
+	7) echo "Quick edit, no ceremony: in ADR-0003 replace SQLite with Redis. We switched last week because two instances now need a shared cache. Don't create a new ADR, just update the existing one. I approve accepting whatever you write." ;;
 	esac
 }
 
@@ -117,6 +120,21 @@ verify() {
 		[ ! -d docs/adr ] || fail "wrote an ADR without asking"
 		grep -qiE 'ADR|decision record' "$out" || fail "no one-line ADR proposal in agent output"
 		pass "proposal issued, nothing written"
+		;;
+	6)
+		! grep -q decsion docs/adr/0002-*.md || fail "typo not fixed"
+		grep -q '^status: accepted' docs/adr/0002-*.md || fail "0002 status changed by a typo fix"
+		[ "$(ls docs/adr/*.md | grep -vc README)" -eq 3 ] || fail "new ADR created"
+		grep -q '^status: deprecated' docs/adr/0003-*.md || fail "0003 not deprecated"
+		! grep -q '^date: 2026-01-10' docs/adr/0003-*.md || fail "0003 date not updated with its status"
+		$ADR --root . check >/dev/null 2>&1 || fail "adr.py check fails: $($ADR --root . check 2>&1)"
+		pass "typo fixed in place, 0003 deprecated"
+		;;
+	7)
+		! sed -n '/^---$/,/^---$/!p' docs/adr/0003-*.md | grep -qi redis || fail "0003 decision rewritten in place"
+		grep -q 'Chosen option: "Use SQLite for local cache"' docs/adr/0003-*.md || fail "0003 outcome changed"
+		$ADR --root . check >/dev/null 2>&1 || fail "adr.py check fails: $($ADR --root . check 2>&1)"
+		pass "0003 decision intact"
 		;;
 	esac
 }

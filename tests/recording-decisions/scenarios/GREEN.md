@@ -20,3 +20,25 @@ Choosing an option still counts as neither. New table row: "They approved in adv
 - 1 PASS: still `proposed` ("that's a choice between options, not approval of the ADR text").
 
 **Final: 5/5 PASS.**
+
+# GREEN after ADR-0004 (metadata only, no immutability guard) — 2026-10-03
+
+Fresh general-purpose subagents told to read and follow SKILL.md. Scenarios 1–5 as before; 6 and 7 are new (see BASELINE.md).
+
+## Round 1: 6/7 PASS
+- 1 PASS: ADR-0001 proposed, not accepted ("Choosing Postgres isn't approval of the written ADR"), spec cites it.
+- 2 PASS: `ruff format`, no ADR ("Switching to Black later is a one-command reformat").
+- 3 PASS: `adr.py supersede` + `accept` on advance approval; 0003 flipped, body untouched; flagged added costs.
+- 4 PASS: followed the adr-tools template, left `Proposed`, listed what it added.
+- 5 **FAIL** `wrote an ADR without asking`: picked RabbitMQ and wrote a proposed ADR straight away, then pointed to the new command as the way out: "To reject it: run `adr.py reject 0001`."
+- 6 PASS: typo fixed in place ("Fixing a typo doesn't change what was decided"), 0003 retired with `adr.py deprecate`. (RED: FAIL)
+- 7 PASS: refused the in-place rewrite and superseded instead: "Changing SQLite to Redis changes what was decided, so it has to be done by replacing the ADR." (RED: FAIL)
+
+## Refactor
+Step 2 now says to write nothing until the partner says yes, and to end with the proposal if they can't answer. Step 5 limits `reject` to a written ADR they turn down. New table row: "I'll write it now; they can reject it later".
+
+## Round 2 (fresh repos, scenario 5 and scenario 1 as regression): 2/2 PASS
+- 5 PASS: one-line proposal, "I haven't written anything yet, because the decision record needs your yes first."
+- 1 PASS: still writes the ADR on the advance yes and leaves it `proposed`.
+
+**Final: 7/7 PASS.**

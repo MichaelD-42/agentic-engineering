@@ -23,6 +23,7 @@ class HookCase(RepoCase):
             capture_output=True,
             text=True,
         )
+        self.stdout = result.stdout
         return result.returncode, result.stderr
 
     def setUp(self):
@@ -30,68 +31,6 @@ class HookCase(RepoCase):
         self.accepted = self.write("docs/adr/0001-a.md", madr("A"))
         self.proposed = self.write("docs/adr/0002-b.md", madr("B", status="proposed"))
         adr.write_index(self.root / "docs/adr")
-
-
-class ImmutableTests(HookCase):
-    def test_blocks_body_edit_of_accepted(self):
-        code, err = self.hook(
-            "hook_immutable.py",
-            "Edit",
-            file_path=str(self.accepted),
-            old_string="Why.",
-            new_string="Why not.",
-        )
-        self.assertEqual(code, 2)
-        self.assertIn("supersede", err)
-
-    def test_immutable_allows_status_and_review_by_edit(self):
-        code, _ = self.hook(
-            "hook_immutable.py",
-            "Edit",
-            file_path=str(self.accepted),
-            old_string="status: accepted",
-            new_string="status: deprecated",
-        )
-        self.assertEqual(code, 0)
-        code, _ = self.hook(
-            "hook_immutable.py",
-            "Edit",
-            file_path=str(self.accepted),
-            old_string="review-by: 2027-09-26",
-            new_string="review-by: 2028-09-26",
-        )
-        self.assertEqual(code, 0)
-
-    def test_blocks_write_replacing_accepted_body(self):
-        code, _ = self.hook(
-            "hook_immutable.py",
-            "Write",
-            file_path=str(self.accepted),
-            content=madr("A2"),
-        )
-        self.assertEqual(code, 2)
-
-    def test_allows_proposed_edits(self):
-        code, _ = self.hook(
-            "hook_immutable.py",
-            "Edit",
-            file_path=str(self.proposed),
-            old_string="Why.",
-            new_string="Because.",
-        )
-        self.assertEqual(code, 0)
-
-    def test_immutable_ignores_non_adr_files(self):
-        for rel in (
-            "docs/adr/README.md",
-            "docs/adr/templates/template.md",
-            "src/x.py",
-            "docs/adr/0009-new.md",
-        ):
-            code, _ = self.hook(
-                "hook_immutable.py", "Write", file_path=rel, content="x"
-            )
-            self.assertEqual(code, 0, rel)
 
 
 class ValidateTests(HookCase):
@@ -108,13 +47,32 @@ class ValidateTests(HookCase):
         code, err = self.hook("hook_validate.py", "Edit", file_path=str(self.proposed))
         self.assertEqual((code, err), (0, ""))
 
-    def test_readme_edit_runs_repo_checks_only(self):
-        (self.root / "docs/adr/README.md").write_text("# Decisions\n")
-        code, err = self.hook(
-            "hook_validate.py", "Write", file_path=str(self.root / "docs/adr/README.md")
+    def test_readme_edit_restores_the_index(self):
+        readme = self.root / "docs/adr/README.md"
+        readme.write_text("# Decisions\n")
+        code, err = self.hook("hook_validate.py", "Write", file_path=str(readme))
+        self.assertEqual((code, err), (0, ""))
+        self.assertIn("adr-index:start", readme.read_text())
+
+    def test_adr_write_refreshes_a_stale_index(self):
+        new = self.write("docs/adr/0003-c.md", madr("C", status="proposed"))
+        code, err = self.hook("hook_validate.py", "Write", file_path=str(new))
+        self.assertEqual((code, err), (0, ""))
+        self.assertIn("0003-c.md", (self.root / "docs/adr/README.md").read_text())
+
+    def test_wording_fix_to_accepted_adr_is_allowed(self):
+        self.accepted.write_text(self.accepted.read_text().replace("Why.", "Why, clearly."))
+        code, err = self.hook("hook_validate.py", "Edit", file_path=str(self.accepted))
+        self.assertEqual((code, err), (0, ""))
+
+    def test_long_proposal_warns_without_blocking(self):
+        self.proposed.write_text(
+            madr("B", status="proposed", body="\n".join(f"line {i}" for i in range(70)))
         )
-        self.assertEqual(code, 2)
-        self.assertIn("index missing", err)
+        code, err = self.hook("hook_validate.py", "Write", file_path=str(self.proposed))
+        self.assertEqual((code, err), (0, ""))
+        context = json.loads(self.stdout)["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("exceeds cap of 60", context)
 
     def test_validate_ignores_files_outside_adr_dir(self):
         code, err = self.hook("hook_validate.py", "Write", file_path="src/x.py")
@@ -134,17 +92,6 @@ class ForeignCwdTests(HookCase):
         )
         return result.returncode, result.stderr
 
-    def test_immutable_blocks_when_cwd_is_elsewhere(self):
-        code, _ = self.hook_from(
-            "/",
-            "hook_immutable.py",
-            "Edit",
-            file_path=str(self.accepted),
-            old_string="Why.",
-            new_string="Why not.",
-        )
-        self.assertEqual(code, 2)
-
     def test_validate_reports_when_cwd_is_elsewhere(self):
         self.proposed.write_text(madr("B", status="maybe"))
         adr.write_index(self.root / "docs/adr")
@@ -154,45 +101,11 @@ class ForeignCwdTests(HookCase):
         self.assertEqual(code, 2)
 
 
-class GuardHardeningTests(HookCase):
-    def test_blocks_regression_to_proposed(self):
-        code, err = self.hook(
-            "hook_immutable.py",
-            "Edit",
-            file_path=str(self.accepted),
-            old_string="status: accepted",
-            new_string="status: proposed",
-        )
-        self.assertEqual(code, 2)
-        self.assertIn("proposed", err)
-
-    def test_blocks_prose_in_date_field(self):
-        code, _ = self.hook(
-            "hook_immutable.py",
-            "Edit",
-            file_path=str(self.accepted),
-            old_string="date: 2026-01-01",
-            new_string="date: 2026 -- actually we chose MySQL",
-        )
-        self.assertEqual(code, 2)
-
-    def test_blocks_edit_it_cannot_reproduce(self):
-        code, err = self.hook(
-            "hook_immutable.py",
-            "Edit",
-            file_path=str(self.accepted),
-            old_string="Why\u2019s",
-            new_string="Because",
-        )
-        self.assertEqual(code, 2)
-        self.assertIn("could not verify", err)
-
-
 class SkillHookCommandTests(unittest.TestCase):
     def test_hook_commands_run_scripts_from_plugin_root(self):
         skill = SCRIPTS.parent / "SKILL.md"
         commands = re.findall(r"command: '(.+)'", skill.read_text().split("\n---\n")[0])
-        self.assertEqual(len(commands), 2)
+        self.assertEqual(len(commands), 1)
         plugin_root = str(SCRIPTS.parents[2])
         with tempfile.TemporaryDirectory() as home:
             for command in commands:

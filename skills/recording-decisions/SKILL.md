@@ -3,11 +3,6 @@ name: recording-decisions
 description: Use when choosing between alternative approaches, libraries, data models, or architectural patterns — including the approach choice in brainstorming — or when your human partner says to record, supersede, review, or revisit a decision
 allowed-tools: Bash(python3 ${CLAUDE_SKILL_DIR}/scripts/adr.py *)
 hooks:
-  PreToolUse:
-    - matcher: "Edit|Write"
-      hooks:
-        - type: command
-          command: 'python3 "${CLAUDE_PLUGIN_ROOT}/skills/recording-decisions/scripts/hook_immutable.py"'
   PostToolUse:
     - matcher: "Edit|Write"
       hooks:
@@ -46,21 +41,27 @@ One of three: one sentence in the spec, no ADR. Two or three: propose one.
 ## Checklist
 
 1. **Gate:** name which tests pass, in one line.
-2. **Propose and wait:** "This looks ADR-worthy (costly to reverse + real rivals): *Use Postgres for event storage*. Record it?" Even under "no ceremony", this one line is the minimum.
+2. **Propose and wait:** "This looks ADR-worthy (costly to reverse + real rivals): *Use Postgres for event storage*. Record it?" Even under "no ceremony", this one line is the minimum. Write nothing until they say yes. If they can't answer now, end with the proposal.
 3. **Create:** `python3 ${CLAUDE_SKILL_DIR}/scripts/adr.py new "<the decision, as a title>"`. Add `--full` only for three or more options or when stakeholders disagree. Never number, name, or format ADR files by hand.
 4. **Fill:** replace every `{…}` placeholder. Keep it to one screen. The title states the decision, not the question. The Y-statement is one line, and each option gets one good line and one bad line. Include the real costs. If your partner gave none, ask; don't leave the Consequences one-sided.
-5. **Approve:** run `adr.py accept NNNN` only on explicit approval to accept: either approval of the written ADR, or advance approval ("accept it once it's written"). Advance approval counts. Accept, then show the ADR and name anything you added that they didn't give you (costs, options), since a wrong line is fixed by superseding. Choosing an option is neither kind of approval.
+5. **Approve:** if your partner turns down a written ADR, run `adr.py reject NNNN`. Run `adr.py accept NNNN` only on explicit approval to accept: either approval of the written ADR, or advance approval ("accept it once it's written"). Advance approval counts. Accept, then show the ADR and name anything you added that they didn't give you (costs, options), since changing what was decided means superseding. Choosing an option is neither kind of approval.
 6. **Link:** the spec cites `ADR-NNNN` instead of restating the rationale. Commit the ADR with the spec.
 
 ## Changing a decision
 
-A decided ADR (any status but `proposed`) is immutable except for `status`, `date` and `review-by`. To reverse or amend one, run `adr.py supersede NNNN "<new decision>"`, fill it in, get approval, then run `adr.py accept`. Accepting flips the old ADR to `superseded by ADR-MMMM`. Never write supersede links or statuses by hand. To retire a decision without replacing it, set its status to `deprecated`.
+Fixing the wording of a decided ADR is fine: a typo, a broken link, a sentence that says the same thing more clearly. Changing *what was decided* is not an edit. Its option, its reason or its consequences change only by superseding, because the old ADR is the record of what was decided then.
+
+- **Reverse or amend:** run `adr.py supersede NNNN "<new decision>"`, fill it in, get approval, then run `adr.py accept`. Accepting flips the old ADR to `superseded by ADR-MMMM`.
+- **Retire without a replacement:** `adr.py deprecate NNNN`.
+- **Review is due and the decision still holds:** set `review-by` to the next date.
+
+`adr.py` writes every status, `date` and supersede link. Never write those by hand; `review-by` is the one field you set yourself.
 
 ## Maintenance
 
-- `adr.py check`: format, numbering, supersede links, index, immutability. Run it before committing ADRs.
+- `adr.py check`: status, dates, numbering, supersede links and index. Run it before committing ADRs. Warnings (an ADR over one screen) don't fail it.
 - `adr.py stale`: accepted ADRs past `review-by`, or citing paths that no longer exist. These are review candidates, not verdicts. Go through each with your human partner, then either bump `review-by` or supersede.
-- `adr.py index`: regenerate the README index after manual changes.
+- `adr.py index`: regenerate the README index. The hook does this after every ADR write.
 
 Offer a pre-commit hook, but never install it yourself:
 
@@ -74,7 +75,7 @@ python3 ${CLAUDE_SKILL_DIR}/scripts/adr.py check
 
 ## Hooks
 
-Once this skill has run in a session, edits to decided ADR bodies are blocked and every ADR write is validated. A hook error is information: fix the ADR, don't route around it.
+Once this skill has run in a session, every ADR write refreshes the index and checks the metadata. A hook error is information: fix the ADR, don't route around it.
 
 ## Red Flags — STOP
 
@@ -91,8 +92,8 @@ Once this skill has run in a session, edits to decided ADR bodies are blocked an
 - An ADR longer than one screen
 
 **Lifecycle**
-- Editing a decided ADR's body
-- Numbering, naming, or writing status or supersede syntax by hand
+- Changing the option, reason or consequences of a decided ADR in place
+- Numbering, naming, or writing status, `date` or supersede syntax by hand
 
 ## Rationalization Prevention
 
@@ -104,5 +105,6 @@ Once this skill has run in a session, edits to decided ADR bodies are blocked an
 | "They made the call, so it's accepted" | They chose an option. That isn't approval to accept. It stays `proposed` until they approve the text or explicitly say to accept it. |
 | "They approved in advance, but I'd better hold it anyway" | Advance approval to accept is their call, not yours to override. Accept, then flag what you added. |
 | "I'll write the supersede link myself" | Hand-written links drift (`superseded by 0004`, `supersedes:` fields). `adr.py supersede` + `accept` write both sides correctly. |
+| "I'll write it now; they can reject it later" | `reject` is for a written ADR they turned down, not a licence to write first. Propose, then wait. |
 | "Every choice matters" | That's what the gate is for. One of three goes in the spec. |
-| "Small fix to the accepted ADR" | Supersede. The history is the point. |
+| "Small fix to the accepted ADR" | A typo or a clearer sentence: fix it. A different option, reason or cost: supersede. The history is the point. |

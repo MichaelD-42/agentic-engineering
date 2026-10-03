@@ -29,7 +29,7 @@ To update: `/plugin marketplace update agentic-engineering`.
 |-------|----------|
 | `eliciting-needs` | Someone brings a first idea for an AI use case, tool, bot, agent or automation, before any solution is designed. Turns the idea into a need canvas, roasts it, and only then sketches the least-AI solution that meets it (often a script, sometimes "don't build"). After launch, it records a review date and gates the review on measured results (`canvas.py status shipped|reviewed`, `canvas.py stale`). |
 | `evaluating-ai-features` | About to write or change a prompt, an LLM call or an agent step. Builds a labelled eval set with the driver (real cases first, a refusal case, a grader per success criterion) and blocks any prompt until `evalset.py` passes it; then hands off to test-driven development. |
-| `recording-decisions` | Choosing between approaches, libraries, data models or architectural patterns, or recording, superseding or reviewing a decision. Gates which decisions get an ADR, writes MADR 4.0 records with `adr.py`, and blocks edits to decided ADRs. |
+| `recording-decisions` | Choosing between approaches, libraries, data models or architectural patterns, or recording, superseding or reviewing a decision. Gates which decisions get an ADR, writes MADR 4.0 records with `adr.py`, which keeps status, supersede links and the index up to date. |
 
 ## Principles
 

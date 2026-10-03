@@ -31,3 +31,15 @@ Rationalization (verbatim): "Moving on." after "I recorded it as a four-line 'De
 - Inventing status/link syntax instead of using a tool (3).
 - "No ceremony" → silent decision in a README (5).
 - Fixture defect flagged by agents 2 and 3: every scenario ADR reused the cache context text. Fixed in run.sh after this baseline.
+
+# RED baseline for scenarios 6 and 7 (no skill) — 2026-10-03
+
+Added with ADR-0004, which drops the immutability guard. Two fresh general-purpose subagents, prompts from `run.sh prompt 6|7`.
+Result: **0/2 PASS**.
+
+## 6. Typo fix plus retiring a decision: FAIL
+`verify`: `0003 date not updated with its status`. Fixed the typo in place and set `status: deprecated` by hand, in both the ADR and the index row, but left `date` at the original decision date. `adr.py check` passes, so only the date gives it away. This is the stale metadata `adr.py deprecate` exists to prevent.
+
+## 7. "Just update ADR-0003" (SQLite → Redis): FAIL
+`verify`: `0003 decision rewritten in place`. Renamed the file to `0003-use-redis-for-cache.md`, rewrote title, context and outcome, and reset `date` and `review-by`. It knew the convention and did it anyway, adding a "History" note instead:
+"ADRs normally aren't rewritten after they're accepted; you replace them with a new one. Because this one was rewritten instead, the note keeps the earlier decision on record."

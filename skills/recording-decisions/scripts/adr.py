@@ -6,7 +6,6 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import re
-import subprocess
 import sys
 from pathlib import Path
 
@@ -300,6 +299,34 @@ def cmd_accept(args) -> int:
     return 0
 
 
+def retire(root: Path, number: int, status: str, today: dt.date) -> Path:
+    """Move an ADR to rejected (from proposed) or deprecated (from accepted)."""
+    allowed_from = {"rejected": "proposed", "deprecated": "accepted"}[status]
+    adr_dir = require_adr_dir(root)
+    path = adr_path(adr_dir, number)
+    text = path.read_text()
+    if status_kind(text) != allowed_from:
+        raise AdrError(f"{path.name} is '{get_status(text)}'; only {allowed_from} ADRs can be {status}")
+    text = set_field(set_status(text, status), "date", today.isoformat())
+    path.write_text(text)
+    write_index(adr_dir)
+    return path
+
+
+@command(arg("number", type=int))
+def cmd_reject(args) -> int:
+    """Mark a proposed ADR rejected (the decision was not taken)."""
+    print(retire(args.root, args.number, "rejected", args.today))
+    return 0
+
+
+@command(arg("number", type=int))
+def cmd_deprecate(args) -> int:
+    """Mark an accepted ADR deprecated (retired without a replacement)."""
+    print(retire(args.root, args.number, "deprecated", args.today))
+    return 0
+
+
 @command(arg("number", type=int), arg("title"), arg("--full", action="store_true"))
 def cmd_supersede(args) -> int:
     """Create a proposed ADR that supersedes NNNN (old flips on accept)."""
@@ -315,28 +342,10 @@ def cmd_supersede(args) -> int:
     return 0
 
 
-MUTABLE_FIELDS = re.compile(r"^(?:status|date|review-by):.*\n", re.M)
-
-
 def content_lines(text: str) -> int:
     _, body = split_frontmatter(text)
     body = re.sub(r"<!--.*?-->", "", body, flags=re.S)
     return sum(1 for line in body.splitlines() if line.strip())
-
-
-def immutable_part(text: str) -> str:
-    """Text with the mutable fields removed, for comparing two versions of a decided ADR."""
-    end = text.find("\n---\n", 3) if text.startswith("---\n") else -1
-    if end != -1:
-        return MUTABLE_FIELDS.sub("", text[:end + 1]) + text[end + 1:]
-    m = NYGARD_STATUS.search(text)
-    return text[:m.start(1)] + text[m.end(1):] if m else text
-
-
-def committed_text(path: Path) -> str | None:
-    result = subprocess.run(["git", "-C", str(path.parent), "show", f"HEAD:./{path.name}"],
-                            capture_output=True, text=True)
-    return result.stdout if result.returncode == 0 else None
 
 
 def file_errors(path: Path, text: str) -> list[str]:
@@ -349,18 +358,32 @@ def file_errors(path: Path, text: str) -> list[str]:
     meta, _ = split_frontmatter(text)
     if meta and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", meta.get("date", "")):
         errors.append(f"{name}: front matter needs date: YYYY-MM-DD")
+    if "review-by" in meta and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", meta["review-by"]):
+        errors.append(f"{name}: review-by must be YYYY-MM-DD")
     if not title_of(text):
         errors.append(f"{name}: missing '# ' title")
     kind = status_kind(text)
     if kind != "proposed" and PLACEHOLDER.search(text):
         errors.append(f"{name}: unfilled template placeholder in a {kind} ADR")
-    cap = 90 if "## Pros and Cons of the Options" in text else 60
-    if kind == "proposed" and (n := content_lines(text)) > cap:
-        errors.append(f"{name}: {n} content lines exceeds cap of {cap}; move detail to the spec")
-    old = committed_text(path)
-    if old is not None and status_kind(old) not in ("", "proposed") and immutable_part(old) != immutable_part(text):
-        errors.append(f"{name}: body of a {status_kind(old)} ADR changed since HEAD; supersede it instead")
     return errors
+
+
+def file_warnings(path: Path, text: str) -> list[str]:
+    """Advice that never fails a check."""
+    cap = 90 if "## Pros and Cons of the Options" in text else 60
+    if status_kind(text) == "proposed" and (n := content_lines(text)) > cap:
+        return [f"{path.name}: {n} content lines exceeds cap of {cap}; move detail to the spec"]
+    return []
+
+
+def warnings(adr_dir: Path, files: list[Path] | None = None) -> list[str]:
+    targets = None if files is None else {f.resolve() for f in files}
+    return [
+        warning
+        for _, path in list_adrs(adr_dir)
+        if targets is None or path.resolve() in targets
+        for warning in file_warnings(path, path.read_text())
+    ]
 
 
 def link_errors(adrs: list[tuple[int, Path]], texts: dict[int, str]) -> list[str]:
@@ -410,12 +433,15 @@ def check(adr_dir: Path, files: list[Path] | None = None) -> list[str]:
 
 @command(arg("files", nargs="*", type=Path))
 def cmd_check(args) -> int:
-    """Validate ADR format, numbering, supersede links, index and immutability."""
+    """Validate ADR metadata: status, dates, numbering, supersede links and index."""
     adr_dir = find_adr_dir(args.root)
     if adr_dir is None:
         print("no ADR directory; nothing to check")
         return 0
-    errors = check(adr_dir, [f.resolve() for f in args.files] or None)
+    files = [f.resolve() for f in args.files] or None
+    errors = check(adr_dir, files)
+    for warning in warnings(adr_dir, files):
+        print(f"warning: {warning}", file=sys.stderr)
     for error in errors:
         print(error, file=sys.stderr)
     if not errors:
